@@ -20,3 +20,8 @@ modules.xml
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+### Project ###
+build/
+logs/
+config.json
