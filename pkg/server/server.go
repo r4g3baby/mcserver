@@ -73,10 +73,22 @@ func (server *Server) Stop() error {
 func (server *Server) handleClient(conn net.Conn) {
 	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client connected")
 
-	if err := conn.Close(); err != nil {
+	connection := NewConnection(conn)
+	for {
+		if err := connection.ReadPacket(); err != nil {
+			// See https://github.com/golang/go/issues/4373 for info.
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				log.Error().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error during packet read")
+				// todo: should we disconnect?
+			}
+			break
+		}
+	}
+
+	if err := connection.Close(); err != nil {
 		// See https://github.com/golang/go/issues/4373 for info.
 		if !strings.Contains(err.Error(), "use of closed network connection") {
-			log.Warn().Err(err).Stringer("connection", conn.RemoteAddr()).Msg("got error while closing connection")
+			log.Warn().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error while closing connection")
 			return
 		}
 	}
