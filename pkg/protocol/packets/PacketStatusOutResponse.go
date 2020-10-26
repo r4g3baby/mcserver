@@ -1,10 +1,41 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"encoding/json"
+	"github.com/google/uuid"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
+)
 
-type PacketStatusOutResponse struct {
-	Response string
-}
+type (
+	PacketStatusOutResponse struct {
+		Response Response
+	}
+
+	Response struct {
+		Version     Version     `json:"version"`
+		Players     Players     `json:"players"`
+		Description Description `json:"description"`
+	}
+
+	Version struct {
+		Name     string `json:"name"`
+		Protocol int    `json:"protocol"`
+	}
+
+	Players struct {
+		Max    int      `json:"max"`
+		Online int      `json:"online"`
+		Sample []Sample `json:"sample"`
+	}
+
+	Sample struct {
+		Name string    `json:"name"`
+		Id   uuid.UUID `json:"id"`
+	}
+
+	Description []chat.Component
+)
 
 func (packet *PacketStatusOutResponse) GetID() int32 {
 	return 0x00
@@ -15,16 +46,39 @@ func (packet *PacketStatusOutResponse) Read(buffer *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
-	packet.Response = response
+
+	var obj Response
+	if err := json.Unmarshal([]byte(response), &obj); err != nil {
+		return err
+	}
+	packet.Response = obj
 
 	return nil
 }
 
 func (packet *PacketStatusOutResponse) Write(buffer *bytes.Buffer) error {
-	err := buffer.WriteUtf(packet.Response, 32767)
+	response, err := json.Marshal(packet.Response)
 	if err != nil {
 		return err
 	}
 
+	if err := buffer.WriteUtf(string(response), 32767); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (d *Description) UnmarshalJSON(data []byte) error {
+	desc, err := chat.FromJSON(data)
+	if err != nil {
+		return err
+	}
+
+	*d = desc
+	return nil
+}
+
+func (d Description) MarshalJSON() ([]byte, error) {
+	return chat.ToJSON(d)
 }

@@ -3,14 +3,15 @@ package server
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -81,9 +82,34 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 	case protocol.Status:
 		switch p := packet.(type) {
 		case *packets.PacketStatusInRequest:
-			proto := strconv.Itoa(int(conn.protocol))
 			return conn.WritePacket(&packets.PacketStatusOutResponse{
-				Response: `{"version":{"name":"§cHello World!","protocol":` + proto + `},"players":{"max":100,"online":0,"sample":[]},"description":{"text":"§9Hello World!"}}`,
+				Response: packets.Response{
+					Version: packets.Version{
+						Name:     chat.ColorChar + "cHello World!",
+						Protocol: int(conn.protocol),
+					},
+					Players: packets.Players{
+						Max:    100,
+						Online: 0,
+						Sample: []packets.Sample{
+							{chat.ColorChar + "bHello World!", uuid.New()},
+						},
+					},
+					Description: []chat.Component{
+						&chat.TextComponent{
+							Text: "Hello World!\n",
+							BaseComponent: chat.BaseComponent{
+								Color: &chat.Blue,
+							},
+						},
+						&chat.TextComponent{
+							Text: "Hello World!",
+							BaseComponent: chat.BaseComponent{
+								Color: &chat.Color{Hex: "c31331"},
+							},
+						},
+					},
+				},
 			})
 		case *packets.PacketStatusInPing:
 			return conn.WritePacket(&packets.PacketStatusOutPong{
