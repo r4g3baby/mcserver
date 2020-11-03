@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
+	"github.com/r4g3baby/mcserver/pkg/util"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/rs/zerolog/log"
@@ -18,6 +19,8 @@ import (
 type Connection struct {
 	net.Conn
 
+	uniqueID uuid.UUID
+	username string
 	protocol protocol.Protocol
 	state    protocol.State
 }
@@ -116,6 +119,19 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 				Payload: p.Payload,
 			})
 		}
+	case protocol.Login:
+		switch p := packet.(type) {
+		case *packets.PacketLoginInStart:
+			conn.uniqueID = util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.username))
+			conn.username = p.Username
+
+			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
+				UniqueID: conn.uniqueID,
+				Username: conn.username,
+			}); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -167,6 +183,11 @@ func (conn *Connection) handlePacketWrite(packet protocol.Packet) error {
 				}
 			}
 		}
+	case protocol.Login:
+		switch packet.(type) {
+		case *packets.PacketLoginOutSuccess:
+			conn.state = protocol.Play
+		}
 	}
 	return nil
 }
@@ -195,6 +216,8 @@ func (conn *Connection) readLength() (int32, error) {
 func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
 		conn,
+		uuid.Nil,
+		"Unknown",
 		protocol.Unknown,
 		protocol.Handshaking,
 	}
