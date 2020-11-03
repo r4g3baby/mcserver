@@ -21,8 +21,7 @@ func (packet *PacketStatusInPing) Read(buffer *bytes.Buffer) error {
 }
 
 func (packet *PacketStatusInPing) Write(buffer *bytes.Buffer) error {
-	err := buffer.WriteInt64(packet.Payload)
-	if err != nil {
+	if err := buffer.WriteInt64(packet.Payload); err != nil {
 		return err
 	}
 

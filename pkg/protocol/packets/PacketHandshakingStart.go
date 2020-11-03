@@ -42,23 +42,19 @@ func (packet *PacketHandshakingStart) Read(buffer *bytes.Buffer) error {
 }
 
 func (packet *PacketHandshakingStart) Write(buffer *bytes.Buffer) error {
-	err := buffer.WriteVarInt(packet.ProtocolVersion)
-	if err != nil {
+	if err := buffer.WriteVarInt(packet.ProtocolVersion); err != nil {
 		return err
 	}
 
-	err = buffer.WriteUtf(packet.ServerAddress, 255)
-	if err != nil {
+	if err := buffer.WriteUtf(packet.ServerAddress, 255); err != nil {
 		return err
 	}
 
-	err = buffer.WriteUint16(packet.ServerPort)
-	if err != nil {
+	if err := buffer.WriteUint16(packet.ServerPort); err != nil {
 		return err
 	}
 
-	err = buffer.WriteVarInt(packet.NextState)
-	if err != nil {
+	if err := buffer.WriteVarInt(packet.NextState); err != nil {
 		return err
 	}
 
