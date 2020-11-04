@@ -14,15 +14,28 @@ import (
 	"net"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type Connection struct {
 	net.Conn
 
+	server *Server
+
 	uniqueID uuid.UUID
 	username string
 	protocol protocol.Protocol
 	state    protocol.State
+}
+
+func (conn *Connection) Close() error {
+	conn.server.removePlayer(conn.uniqueID)
+	return conn.Conn.Close()
+}
+
+func (conn *Connection) DelayedClose(delay time.Duration) error {
+	time.Sleep(delay)
+	return conn.Close()
 }
 
 func (conn *Connection) ReadPacket() error {
@@ -125,6 +138,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 			conn.uniqueID = util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.username))
 			conn.username = p.Username
 
+			_ = conn.server.createPlayer(conn)
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
 				UniqueID: conn.uniqueID,
 				Username: conn.username,
@@ -185,8 +199,25 @@ func (conn *Connection) handlePacketWrite(packet protocol.Packet) error {
 		}
 	case protocol.Login:
 		switch packet.(type) {
+		case *packets.PacketLoginOutDisconnect:
+			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
+				// See https://github.com/golang/go/issues/4373 for info.
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					return err
+				}
+			}
 		case *packets.PacketLoginOutSuccess:
 			conn.state = protocol.Play
+		}
+	case protocol.Play:
+		switch packet.(type) {
+		case *packets.PacketPlayOutDisconnect:
+			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
+				// See https://github.com/golang/go/issues/4373 for info.
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					return err
+				}
+			}
 		}
 	}
 	return nil
@@ -213,11 +244,12 @@ func (conn *Connection) readLength() (int32, error) {
 	return result, nil
 }
 
-func NewConnection(conn net.Conn) *Connection {
+func NewConnection(conn net.Conn, server *Server) *Connection {
 	return &Connection{
 		conn,
+		server,
 		uuid.Nil,
-		"Unknown",
+		"",
 		protocol.Unknown,
 		protocol.Handshaking,
 	}

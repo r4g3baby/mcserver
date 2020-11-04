@@ -31,6 +31,11 @@ var packetsByID = map[protocol.State]map[protocol.Direction]map[int32]reflect.Ty
 			0x00: reflect.TypeOf((*PacketLoginInStart)(nil)).Elem(),
 		},
 	},
+	protocol.Play: {
+		protocol.ClientBound: {
+			0x19: reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem(),
+		},
+	},
 }
 
 func GetPacketByID(state protocol.State, direction protocol.Direction, id int32) (protocol.Packet, error) {
