@@ -15,12 +15,15 @@ func WriteCompressed(writer io.Writer, name string, tag Tag) error {
 }
 
 func Write(writer io.Writer, name string, tag Tag) error {
-	if err := writeByte(writer, ByteTag(tag.Type())); err != nil {
+	typ := tag.Type()
+	if err := writeByte(writer, ByteTag(typ)); err != nil {
 		return err
 	}
 
-	if err := writeString(writer, StringTag(name)); err != nil {
-		return err
+	if typ != TypeEnd {
+		if err := writeString(writer, StringTag(name)); err != nil {
+			return err
+		}
 	}
 
 	switch t := tag.(type) {
@@ -120,7 +123,7 @@ func writeString(writer io.Writer, value StringTag) error {
 
 func writeList(writer io.Writer, value ListTag) error {
 	if len(value) == 0 {
-		if err := writeByte(writer, ByteTag(TypeEnd)); err != nil {
+		if err := Write(writer, "", EndTag{}); err != nil {
 			return err
 		}
 		return writeInt(writer, IntTag(0))
@@ -245,7 +248,7 @@ func writeCompound(writer io.Writer, value CompoundTag) error {
 			return err
 		}
 	}
-	return writeByte(writer, ByteTag(TypeEnd))
+	return Write(writer, "", EndTag{})
 }
 
 func writeIntArray(writer io.Writer, value IntArrayTag) error {
