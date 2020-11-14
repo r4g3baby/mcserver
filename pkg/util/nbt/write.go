@@ -1,11 +1,18 @@
 package nbt
 
 import (
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"math"
 )
+
+func WriteCompressed(writer io.Writer, name string, tag Tag) error {
+	gzipWriter := gzip.NewWriter(writer)
+	defer gzipWriter.Close()
+	return Write(gzipWriter, name, tag)
+}
 
 func Write(writer io.Writer, name string, tag Tag) error {
 	if err := writeByte(writer, ByteTag(tag.Type())); err != nil {
