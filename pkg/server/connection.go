@@ -61,7 +61,13 @@ func (conn *Connection) ReadPacket() error {
 
 	packet, err := packets.GetPacketByID(conn.state, protocol.ServerBound, packetID)
 	if err != nil {
-		return err
+		if e := log.Debug(); e.Enabled() {
+			e.Str("id", fmt.Sprintf("%#0X", packetID))
+			e.Stringer("state", conn.state)
+			e.Int32("protocol", int32(conn.protocol))
+			e.Msg("received unknown packet")
+		}
+		return nil
 	}
 
 	if e := log.Debug(); e.Enabled() {
