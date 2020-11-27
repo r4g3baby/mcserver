@@ -3,11 +3,15 @@ package server
 import (
 	"errors"
 	"github.com/google/uuid"
+	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/rs/zerolog/log"
+	"math"
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -54,6 +58,13 @@ func (server *Server) Start() error {
 			}
 
 			go server.handleClient(client)
+		}
+	}()
+
+	go func() {
+		for !shutdown {
+			go server.sendKeepAlive()
+			time.Sleep(time.Second)
 		}
 	}()
 
@@ -117,6 +128,26 @@ func (server *Server) handleClient(conn net.Conn) {
 	}
 
 	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client disconnected")
+}
+
+func (server *Server) sendKeepAlive() {
+	server.ForEachPlayer(func(player *Player) {
+		currentTime := time.Now().UnixNano()
+		if currentTime-player.GetLastKeepAliveTime() >= 15000 {
+			if !player.IsKeepAlivePending() {
+				rand.Seed(currentTime)
+				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
+					KeepAliveID: rand.Int63n(math.MaxInt32),
+				}); err != nil {
+					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to send keep alive packet")
+				}
+			} else {
+				if err := player.Kick("{\"text\":\"Timed out\",\"color\":\"red\"}"); err != nil {
+					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to kick player")
+				}
+			}
+		}
+	})
 }
 
 func (server *Server) createPlayer(conn *Connection) *Player {

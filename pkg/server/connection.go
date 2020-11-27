@@ -174,6 +174,15 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 
 			return conn.WritePacket(&packets.PacketPlayOutPositionAndLook{})
 		}
+	case protocol.Play:
+		switch p := packet.(type) {
+		case *packets.PacketPlayInKeepAlive:
+			if player := conn.server.GetPlayer(conn.uniqueID); player != nil {
+				if player.IsKeepAlivePending() && p.KeepAliveID == player.GetLastKeepAliveID() {
+					player.SetKeepAlivePending(false)
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -238,13 +247,20 @@ func (conn *Connection) handlePacketWrite(packet protocol.Packet) error {
 			conn.state = protocol.Play
 		}
 	case protocol.Play:
-		switch packet.(type) {
+		switch p := packet.(type) {
 		case *packets.PacketPlayOutDisconnect:
 			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
 				// See https://github.com/golang/go/issues/4373 for info.
 				if !strings.Contains(err.Error(), "use of closed network connection") {
 					return err
 				}
+			}
+		case *packets.PacketPlayOutKeepAlive:
+			if player := conn.server.GetPlayer(conn.uniqueID); player != nil {
+				currentTime := time.Now().UnixNano()
+				player.SetKeepAlivePending(true)
+				player.SetLastKeepAliveTime(currentTime)
+				player.SetLastKeepAliveID(p.KeepAliveID)
 			}
 		}
 	}

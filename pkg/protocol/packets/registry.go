@@ -34,8 +34,12 @@ var packetsByID = map[protocol.State]map[protocol.Direction]map[int32]reflect.Ty
 	protocol.Play: {
 		protocol.ClientBound: {
 			0x19: reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem(),
+			0x1F: reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem(),
 			0x24: reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem(),
 			0x34: reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem(),
+		},
+		protocol.ServerBound: {
+			0x10: reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(),
 		},
 	},
 }

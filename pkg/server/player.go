@@ -8,6 +8,10 @@ import (
 
 type Player struct {
 	conn *Connection
+
+	keepAlivePending  bool
+	lastKeepAliveTime int64
+	lastKeepAliveID   int64
 }
 
 func (player *Player) GetServer() *Server {
@@ -28,6 +32,30 @@ func (player *Player) GetProtocol() protocol.Protocol {
 
 func (player *Player) GetState() protocol.State {
 	return player.conn.state
+}
+
+func (player *Player) SetKeepAlivePending(keepAlivePending bool) {
+	player.keepAlivePending = keepAlivePending
+}
+
+func (player *Player) IsKeepAlivePending() bool {
+	return player.keepAlivePending
+}
+
+func (player *Player) SetLastKeepAliveTime(lastKeepAliveTime int64) {
+	player.lastKeepAliveTime = lastKeepAliveTime
+}
+
+func (player *Player) GetLastKeepAliveTime() int64 {
+	return player.lastKeepAliveTime
+}
+
+func (player *Player) SetLastKeepAliveID(lastKeepAliveID int64) {
+	player.lastKeepAliveID = lastKeepAliveID
+}
+
+func (player *Player) GetLastKeepAliveID() int64 {
+	return player.lastKeepAliveID
 }
 
 func (player *Player) SendPacket(packet protocol.Packet) error {
