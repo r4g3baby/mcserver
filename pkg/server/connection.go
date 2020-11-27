@@ -144,13 +144,35 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 			conn.uniqueID = util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.username))
 			conn.username = p.Username
 
-			_ = conn.server.createPlayer(conn)
+			player := conn.server.createPlayer(conn)
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
-				UniqueID: conn.uniqueID,
-				Username: conn.username,
+				UniqueID: player.GetUniqueID(),
+				Username: player.GetUsername(),
 			}); err != nil {
 				return err
 			}
+
+			if err := conn.WritePacket(&packets.PacketPlayOutJoinGame{
+				EntityID:         1,
+				Hardcore:         false,
+				Gamemode:         0,
+				PreviousGamemode: -1,
+				WorldNames:       []string{"minecraft:overworld"},
+				DimensionCodec:   packets.DimensionCodec,
+				Dimension:        packets.Overworld["element"],
+				WorldName:        "minecraft:overworld",
+				HashedSeed:       0,
+				MaxPlayers:       20,
+				ViewDistance:     10,
+				ReducedDebug:     false,
+				RespawnScreen:    true,
+				IsDebug:          false,
+				IsFlat:           false,
+			}); err != nil {
+				return err
+			}
+
+			return conn.WritePacket(&packets.PacketPlayOutPositionAndLook{})
 		}
 	}
 	return nil
