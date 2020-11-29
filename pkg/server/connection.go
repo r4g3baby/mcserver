@@ -172,6 +172,13 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 				return err
 			}
 
+			if err := conn.WritePacket(&packets.PacketPlayOutServerDifficulty{
+				Difficulty: 1,
+				Locked:     true,
+			}); err != nil {
+				return err
+			}
+
 			return conn.WritePacket(&packets.PacketPlayOutPositionAndLook{})
 		}
 	case protocol.Play:
