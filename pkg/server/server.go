@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
@@ -23,7 +24,8 @@ type Server struct {
 	config Config
 
 	listener net.Listener
-	shutdown chan bool
+	wait     sync.WaitGroup
+	shutdown context.CancelFunc
 	players  sync.Map
 }
 
@@ -41,30 +43,46 @@ func (server *Server) Start() error {
 
 	log.Info().Stringer("addr", listener.Addr()).Msg("server listening for new connections")
 
-	shutdown := false
-	go func() {
-		shutdown = <-server.shutdown
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	server.shutdown = cancel
 
+	server.wait.Add(1)
 	go func() {
-		for !shutdown {
-			client, err := listener.Accept()
-			if err != nil {
-				// See https://github.com/golang/go/issues/4373 for info.
-				if !strings.Contains(err.Error(), "use of closed network connection") {
-					log.Warn().Err(err).Msg("error occurred while accepting s new connection")
+		defer server.wait.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				client, err := listener.Accept()
+				if err != nil {
+					// See https://github.com/golang/go/issues/4373 for info.
+					if !strings.Contains(err.Error(), "use of closed network connection") {
+						log.Warn().Err(err).Msg("error occurred while accepting s new connection")
+					}
+					continue
 				}
-				continue
-			}
 
-			go server.handleClient(client)
+				go server.handleClient(client)
+			}
 		}
 	}()
 
+	server.wait.Add(1)
 	go func() {
-		for !shutdown {
-			go server.sendKeepAlive()
-			time.Sleep(time.Second)
+		defer server.wait.Done()
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				go server.sendKeepAlive()
+			}
 		}
 	}()
 
@@ -81,10 +99,13 @@ func (server *Server) Stop() error {
 		_ = player.Kick("server is shutting down")
 	})
 
-	server.shutdown <- true
+	server.shutdown()
+
 	if err := server.listener.Close(); err != nil {
-		log.Error().Err(err).Msg("failed to close listener")
+		log.Error().Err(err).Msg("got error while closing listener")
 	}
+
+	server.wait.Wait()
 	server.listener = nil
 
 	return nil
@@ -162,8 +183,8 @@ func (server *Server) removePlayer(uniqueID uuid.UUID) {
 
 func NewServer(config Config) *Server {
 	return &Server{
-		config:   config,
-		shutdown: make(chan bool),
-		players:  sync.Map{},
+		config:  config,
+		wait:    sync.WaitGroup{},
+		players: sync.Map{},
 	}
 }
