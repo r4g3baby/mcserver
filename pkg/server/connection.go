@@ -14,6 +14,7 @@ import (
 	"net"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,14 +23,63 @@ type Connection struct {
 
 	server *Server
 
+	mutex    sync.RWMutex
 	uniqueID uuid.UUID
 	username string
 	protocol protocol.Protocol
 	state    protocol.State
 }
 
+func (conn *Connection) SetUniqueID(uniqueID uuid.UUID) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.uniqueID = uniqueID
+}
+
+func (conn *Connection) GetUniqueID() uuid.UUID {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.uniqueID
+}
+
+func (conn *Connection) SetUsername(username string) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.username = username
+}
+
+func (conn *Connection) GetUsername() string {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.username
+}
+
+func (conn *Connection) SetProtocol(protocol protocol.Protocol) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.protocol = protocol
+}
+
+func (conn *Connection) GetProtocol() protocol.Protocol {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.protocol
+}
+
+func (conn *Connection) SetState(state protocol.State) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.state = state
+}
+
+func (conn *Connection) GetState() protocol.State {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.state
+}
+
 func (conn *Connection) Close() error {
-	conn.server.removePlayer(conn.uniqueID)
+	conn.server.removePlayer(conn.GetUniqueID())
 	return conn.Conn.Close()
 }
 
@@ -59,12 +109,12 @@ func (conn *Connection) ReadPacket() error {
 		return err
 	}
 
-	packet, err := packets.GetPacketByID(conn.state, protocol.ServerBound, packetID)
+	packet, err := packets.GetPacketByID(conn.GetState(), protocol.ServerBound, packetID)
 	if err != nil {
 		if e := log.Debug(); e.Enabled() {
 			e.Str("id", fmt.Sprintf("%#0X", packetID))
-			e.Stringer("state", conn.state)
-			e.Int32("protocol", int32(conn.protocol))
+			e.Stringer("state", conn.GetState())
+			e.Int32("protocol", int32(conn.GetProtocol()))
 			e.Msg("received unknown packet")
 		}
 		return nil
@@ -73,8 +123,8 @@ func (conn *Connection) ReadPacket() error {
 	if e := log.Debug(); e.Enabled() {
 		e.Str("id", fmt.Sprintf("%#0X", packetID))
 		e.Stringer("type", reflect.TypeOf(packet))
-		e.Stringer("state", conn.state)
-		e.Int32("protocol", int32(conn.protocol))
+		e.Stringer("state", conn.GetState())
+		e.Int32("protocol", int32(conn.GetProtocol()))
 		e.Msg("received packet")
 	}
 
@@ -86,17 +136,17 @@ func (conn *Connection) ReadPacket() error {
 }
 
 func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
-	switch conn.state {
+	switch conn.GetState() {
 	case protocol.Handshaking:
 		switch p := packet.(type) {
 		case *packets.PacketHandshakingStart:
-			conn.protocol = protocol.Protocol(p.ProtocolVersion)
+			conn.SetProtocol(protocol.Protocol(p.ProtocolVersion))
 
 			switch p.NextState {
 			case 1:
-				conn.state = protocol.Status
+				conn.SetState(protocol.Status)
 			case 2:
-				conn.state = protocol.Login
+				conn.SetState(protocol.Login)
 			default:
 				return errors.New("received invalid nextState")
 			}
@@ -108,13 +158,13 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 				Response: packets.Response{
 					Version: packets.Version{
 						Name:     chat.ColorChar + "cHello World!",
-						Protocol: int(conn.protocol),
+						Protocol: int(conn.GetProtocol()),
 					},
 					Players: packets.Players{
 						Max:    100,
 						Online: 0,
 						Sample: []packets.Sample{
-							{chat.ColorChar + "bHello World!", uuid.New()},
+							{chat.ColorChar + "bHello World!", uuid.Nil},
 						},
 					},
 					Description: []chat.Component{
@@ -127,7 +177,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 						&chat.TextComponent{
 							Text: "Hello World!",
 							BaseComponent: chat.BaseComponent{
-								Color: &chat.Color{Hex: "c31331"},
+								Color: &chat.Color{Hex: "c33131"},
 							},
 						},
 					},
@@ -141,8 +191,8 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 	case protocol.Login:
 		switch p := packet.(type) {
 		case *packets.PacketLoginInStart:
-			conn.uniqueID = util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.username))
-			conn.username = p.Username
+			conn.SetUsername(p.Username)
+			conn.SetUniqueID(util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.GetUsername())))
 
 			player := conn.server.createPlayer(conn)
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
@@ -184,7 +234,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 	case protocol.Play:
 		switch p := packet.(type) {
 		case *packets.PacketPlayInKeepAlive:
-			if player := conn.server.GetPlayer(conn.uniqueID); player != nil {
+			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
 				if player.IsKeepAlivePending() && p.KeepAliveID == player.GetLastKeepAliveID() {
 					player.SetKeepAlivePending(false)
 				}
@@ -214,6 +264,10 @@ func (conn *Connection) WritePacket(packet protocol.Packet) error {
 		return err
 	}
 
+	if err := conn.handlePrePacketWrite(packet); err != nil {
+		return err
+	}
+
 	if _, err := buffer.WriteTo(conn); err != nil {
 		return err
 	}
@@ -221,16 +275,32 @@ func (conn *Connection) WritePacket(packet protocol.Packet) error {
 	if e := log.Debug(); e.Enabled() {
 		e.Str("id", fmt.Sprintf("%#0X", packet.GetID()))
 		e.Stringer("type", reflect.TypeOf(packet))
-		e.Stringer("state", conn.state)
-		e.Int32("protocol", int32(conn.protocol))
+		e.Stringer("state", conn.GetState())
+		e.Int32("protocol", int32(conn.GetProtocol()))
 		e.Msg("sent packet")
 	}
 
-	return conn.handlePacketWrite(packet)
+	return conn.handlePostPacketWrite(packet)
 }
 
-func (conn *Connection) handlePacketWrite(packet protocol.Packet) error {
-	switch conn.state {
+func (conn *Connection) handlePrePacketWrite(packet protocol.Packet) error {
+	switch conn.GetState() {
+	case protocol.Play:
+		switch p := packet.(type) {
+		case *packets.PacketPlayOutKeepAlive:
+			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
+				currentTime := time.Now().UnixNano()
+				player.SetLastKeepAliveTime(currentTime)
+				player.SetLastKeepAliveID(p.KeepAliveID)
+				player.SetKeepAlivePending(true)
+			}
+		}
+	}
+	return nil
+}
+
+func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
+	switch conn.GetState() {
 	case protocol.Status:
 		switch packet.(type) {
 		case *packets.PacketStatusOutPong:
@@ -251,23 +321,16 @@ func (conn *Connection) handlePacketWrite(packet protocol.Packet) error {
 				}
 			}
 		case *packets.PacketLoginOutSuccess:
-			conn.state = protocol.Play
+			conn.SetState(protocol.Play)
 		}
 	case protocol.Play:
-		switch p := packet.(type) {
+		switch packet.(type) {
 		case *packets.PacketPlayOutDisconnect:
 			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
 				// See https://github.com/golang/go/issues/4373 for info.
 				if !strings.Contains(err.Error(), "use of closed network connection") {
 					return err
 				}
-			}
-		case *packets.PacketPlayOutKeepAlive:
-			if player := conn.server.GetPlayer(conn.uniqueID); player != nil {
-				currentTime := time.Now().UnixNano()
-				player.SetKeepAlivePending(true)
-				player.SetLastKeepAliveTime(currentTime)
-				player.SetLastKeepAliveID(p.KeepAliveID)
 			}
 		}
 	}
@@ -299,6 +362,7 @@ func NewConnection(conn net.Conn, server *Server) *Connection {
 	return &Connection{
 		conn,
 		server,
+		sync.RWMutex{},
 		uuid.Nil,
 		"",
 		protocol.Unknown,
