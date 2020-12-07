@@ -1,8 +1,6 @@
 package packets
 
-import (
-	"github.com/r4g3baby/mcserver/pkg/util/bytes"
-)
+import "github.com/r4g3baby/mcserver/pkg/util/bytes"
 
 type PacketLoginOutDisconnect struct {
 	Reason string
