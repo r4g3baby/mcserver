@@ -80,4 +80,5 @@ const (
 	V1_16_1 Protocol = 736
 	V1_16_2 Protocol = 751
 	V1_16_3 Protocol = 753
+	V1_16_4 Protocol = 754
 )
