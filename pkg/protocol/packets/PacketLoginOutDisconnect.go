@@ -1,9 +1,12 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
+)
 
 type PacketLoginOutDisconnect struct {
-	Reason string
+	Reason []chat.Component
 }
 
 func (packet *PacketLoginOutDisconnect) GetID() int32 {
@@ -11,7 +14,12 @@ func (packet *PacketLoginOutDisconnect) GetID() int32 {
 }
 
 func (packet *PacketLoginOutDisconnect) Read(buffer *bytes.Buffer) error {
-	reason, err := buffer.ReadUtf(32767)
+	reasonStr, err := buffer.ReadUtf(32767)
+	if err != nil {
+		return err
+	}
+
+	reason, err := chat.FromJSON([]byte(reasonStr))
 	if err != nil {
 		return err
 	}
@@ -21,7 +29,12 @@ func (packet *PacketLoginOutDisconnect) Read(buffer *bytes.Buffer) error {
 }
 
 func (packet *PacketLoginOutDisconnect) Write(buffer *bytes.Buffer) error {
-	if err := buffer.WriteUtf(packet.Reason, 32767); err != nil {
+	reason, err := chat.ToJSON(packet.Reason)
+	if err != nil {
+		return err
+	}
+
+	if err := buffer.WriteUtf(string(reason), 32767); err != nil {
 		return err
 	}
 

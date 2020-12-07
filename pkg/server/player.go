@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"sync"
 )
 
@@ -76,7 +77,7 @@ func (player *Player) SendPacket(packet protocol.Packet) error {
 	return player.conn.WritePacket(packet)
 }
 
-func (player *Player) Kick(reason string) error {
+func (player *Player) Kick(reason []chat.Component) error {
 	if player.GetState() == protocol.Handshaking || player.GetState() == protocol.Login {
 		return player.SendPacket(&packets.PacketLoginOutDisconnect{
 			Reason: reason,

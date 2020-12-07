@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/rs/zerolog/log"
 	"math"
 	"math/rand"
@@ -96,7 +97,14 @@ func (server *Server) Stop() error {
 
 	log.Info().Msg("stopping server")
 	server.ForEachPlayer(func(player *Player) {
-		_ = player.Kick("server is shutting down")
+		_ = player.Kick([]chat.Component{
+			&chat.TextComponent{
+				Text: "Server is shutting down",
+				BaseComponent: chat.BaseComponent{
+					Color: &chat.Red,
+				},
+			},
+		})
 	})
 
 	server.shutdown()
@@ -163,7 +171,14 @@ func (server *Server) sendKeepAlive() {
 					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to send keep alive packet")
 				}
 			} else {
-				if err := player.Kick("{\"text\":\"Timed out\",\"color\":\"red\"}"); err != nil {
+				if err := player.Kick([]chat.Component{
+					&chat.TextComponent{
+						Text: "Timed out",
+						BaseComponent: chat.BaseComponent{
+							Color: &chat.Red,
+						},
+					},
+				}); err != nil {
 					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to kick player")
 				}
 			}
