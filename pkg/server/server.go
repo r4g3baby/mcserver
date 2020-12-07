@@ -154,7 +154,7 @@ func (server *Server) handleClient(conn net.Conn) {
 func (server *Server) sendKeepAlive() {
 	server.ForEachPlayer(func(player *Player) {
 		currentTime := time.Now().UnixNano()
-		if currentTime-player.GetLastKeepAliveTime() >= 15000 {
+		if currentTime-player.GetLastKeepAliveTime() >= 15*int64(time.Second) {
 			if !player.IsKeepAlivePending() {
 				rand.Seed(currentTime)
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
