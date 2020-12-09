@@ -1,16 +1,19 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+)
 
 type PacketStatusInPing struct {
 	Payload int64
 }
 
-func (packet *PacketStatusInPing) GetID() int32 {
-	return 0x01
+func (packet *PacketStatusInPing) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Status, protocol.ServerBound, packet)
 }
 
-func (packet *PacketStatusInPing) Read(buffer *bytes.Buffer) error {
+func (packet *PacketStatusInPing) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	payload, err := buffer.ReadInt64()
 	if err != nil {
 		return err
@@ -20,7 +23,7 @@ func (packet *PacketStatusInPing) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketStatusInPing) Write(buffer *bytes.Buffer) error {
+func (packet *PacketStatusInPing) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteInt64(packet.Payload); err != nil {
 		return err
 	}

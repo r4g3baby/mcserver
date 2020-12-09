@@ -8,9 +8,9 @@ type (
 	Protocol  int32
 
 	Packet interface {
-		GetID() int32
-		Read(buffer *bytes.Buffer) error
-		Write(buffer *bytes.Buffer) error
+		GetID(proto Protocol) (int32, error)
+		Read(proto Protocol, buffer *bytes.Buffer) error
+		Write(proto Protocol, buffer *bytes.Buffer) error
 	}
 )
 

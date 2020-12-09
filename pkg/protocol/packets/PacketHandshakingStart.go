@@ -1,6 +1,9 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+)
 
 type PacketHandshakingStart struct {
 	ProtocolVersion int32
@@ -9,11 +12,11 @@ type PacketHandshakingStart struct {
 	NextState       int32
 }
 
-func (packet *PacketHandshakingStart) GetID() int32 {
-	return 0x00
+func (packet *PacketHandshakingStart) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Handshaking, protocol.ServerBound, packet)
 }
 
-func (packet *PacketHandshakingStart) Read(buffer *bytes.Buffer) error {
+func (packet *PacketHandshakingStart) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	protocolVersion, err := buffer.ReadVarInt()
 	if err != nil {
 		return err
@@ -41,7 +44,7 @@ func (packet *PacketHandshakingStart) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketHandshakingStart) Write(buffer *bytes.Buffer) error {
+func (packet *PacketHandshakingStart) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteVarInt(packet.ProtocolVersion); err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@ package packets
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 )
@@ -37,11 +38,11 @@ type (
 	Description []chat.Component
 )
 
-func (packet *PacketStatusOutResponse) GetID() int32 {
-	return 0x00
+func (packet *PacketStatusOutResponse) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Status, protocol.ClientBound, packet)
 }
 
-func (packet *PacketStatusOutResponse) Read(buffer *bytes.Buffer) error {
+func (packet *PacketStatusOutResponse) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	response, err := buffer.ReadUtf(32767)
 	if err != nil {
 		return err
@@ -56,7 +57,7 @@ func (packet *PacketStatusOutResponse) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketStatusOutResponse) Write(buffer *bytes.Buffer) error {
+func (packet *PacketStatusOutResponse) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	response, err := json.Marshal(packet.Response)
 	if err != nil {
 		return err

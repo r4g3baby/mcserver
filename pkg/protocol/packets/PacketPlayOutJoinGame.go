@@ -1,6 +1,7 @@
 package packets
 
 import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/nbt"
 )
@@ -144,11 +145,11 @@ var (
 	}
 )
 
-func (packet *PacketPlayOutJoinGame) GetID() int32 {
-	return 0x24
+func (packet *PacketPlayOutJoinGame) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
-func (packet *PacketPlayOutJoinGame) Read(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutJoinGame) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	entityID, err := buffer.ReadInt32()
 	if err != nil {
 		return err
@@ -251,7 +252,7 @@ func (packet *PacketPlayOutJoinGame) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketPlayOutJoinGame) Write(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutJoinGame) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteInt32(packet.EntityID); err != nil {
 		return err
 	}

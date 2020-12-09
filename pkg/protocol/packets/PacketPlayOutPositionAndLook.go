@@ -1,6 +1,9 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+)
 
 type PacketPlayOutPositionAndLook struct {
 	X, Y, Z    float64
@@ -9,11 +12,11 @@ type PacketPlayOutPositionAndLook struct {
 	TeleportID int32
 }
 
-func (packet *PacketPlayOutPositionAndLook) GetID() int32 {
-	return 0x34
+func (packet *PacketPlayOutPositionAndLook) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
-func (packet *PacketPlayOutPositionAndLook) Read(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutPositionAndLook) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	x, err := buffer.ReadFloat64()
 	if err != nil {
 		return err
@@ -59,7 +62,7 @@ func (packet *PacketPlayOutPositionAndLook) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketPlayOutPositionAndLook) Write(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutPositionAndLook) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteFloat64(packet.X); err != nil {
 		return err
 	}

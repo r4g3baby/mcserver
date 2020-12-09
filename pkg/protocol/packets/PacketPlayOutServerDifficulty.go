@@ -1,17 +1,20 @@
 package packets
 
-import "github.com/r4g3baby/mcserver/pkg/util/bytes"
+import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
+)
 
 type PacketPlayOutServerDifficulty struct {
 	Difficulty uint8
 	Locked     bool
 }
 
-func (packet *PacketPlayOutServerDifficulty) GetID() int32 {
-	return 0x0D
+func (packet *PacketPlayOutServerDifficulty) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
-func (packet *PacketPlayOutServerDifficulty) Read(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutServerDifficulty) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	difficulty, err := buffer.ReadUint8()
 	if err != nil {
 		return err
@@ -27,7 +30,7 @@ func (packet *PacketPlayOutServerDifficulty) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketPlayOutServerDifficulty) Write(buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutServerDifficulty) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteUint8(packet.Difficulty); err != nil {
 		return err
 	}

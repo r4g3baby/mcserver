@@ -2,6 +2,7 @@ package packets
 
 import (
 	"github.com/google/uuid"
+	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 )
 
@@ -10,11 +11,11 @@ type PacketLoginOutSuccess struct {
 	Username string
 }
 
-func (packet *PacketLoginOutSuccess) GetID() int32 {
-	return 0x02
+func (packet *PacketLoginOutSuccess) GetID(proto protocol.Protocol) (int32, error) {
+	return GetPacketID(proto, protocol.Login, protocol.ClientBound, packet)
 }
 
-func (packet *PacketLoginOutSuccess) Read(buffer *bytes.Buffer) error {
+func (packet *PacketLoginOutSuccess) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	uniqueID, err := buffer.ReadUUID()
 	if err != nil {
 		return err
@@ -30,7 +31,7 @@ func (packet *PacketLoginOutSuccess) Read(buffer *bytes.Buffer) error {
 	return nil
 }
 
-func (packet *PacketLoginOutSuccess) Write(buffer *bytes.Buffer) error {
+func (packet *PacketLoginOutSuccess) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteUUID(packet.UniqueID); err != nil {
 		return err
 	}
