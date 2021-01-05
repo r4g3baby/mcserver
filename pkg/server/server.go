@@ -160,13 +160,13 @@ func (server *Server) handleClient(conn net.Conn) {
 }
 
 func (server *Server) sendKeepAlive() {
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	server.ForEachPlayer(func(player *Player) {
 		currentTime := time.Now().UnixNano()
 		if currentTime-player.GetLastKeepAliveTime() >= 15*int64(time.Second) {
 			if !player.IsKeepAlivePending() {
-				rand.Seed(currentTime)
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
-					KeepAliveID: rand.Int63n(math.MaxInt32),
+					KeepAliveID: random.Int63n(math.MaxInt32),
 				}); err != nil {
 					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to send keep alive packet")
 				}
