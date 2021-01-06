@@ -73,6 +73,23 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
+				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x20,
+				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x25,
+				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x35,
+			},
+			protocol.ServerBound: {
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x10,
+			},
+		},
+	}); err != nil {
+		panic(err)
+	}
+
+	if err := RegisterPackets(protocol.V1_16_2, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+		protocol.Play: {
+			protocol.ClientBound: {
+				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x19,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x24,
@@ -86,7 +103,8 @@ func init() {
 		panic(err)
 	}
 
-	copyPackets(protocol.V1_16, protocol.V1_16_1, protocol.V1_16_2, protocol.V1_16_3, protocol.V1_16_4)
+	copyPackets(protocol.V1_16, protocol.V1_16_1)
+	copyPackets(protocol.V1_16_2, protocol.V1_16_3, protocol.V1_16_4)
 }
 
 func GetPacketID(proto protocol.Protocol, state protocol.State, direction protocol.Direction, packet protocol.Packet) (int32, error) {
