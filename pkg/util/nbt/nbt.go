@@ -24,13 +24,13 @@ type (
 	}
 
 	EndTag       struct{}
-	ByteTag      byte
+	ByteTag      uint8
 	ShortTag     int16
 	IntTag       int32
 	LongTag      int64
 	FloatTag     float32
 	DoubleTag    float64
-	ByteArrayTag []byte
+	ByteArrayTag []uint8
 	StringTag    string
 	ListTag      []Tag
 	CompoundTag  map[string]Tag
