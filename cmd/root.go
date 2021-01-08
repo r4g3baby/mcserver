@@ -79,7 +79,7 @@ func setupLogger(config internal.Config) {
 func setupConfig() internal.Config {
 	viper.AddConfigPath(".")
 	viper.SetConfigName("config")
-	viper.SetConfigType("json")
+	viper.SetConfigType("toml")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
