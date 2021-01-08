@@ -62,7 +62,8 @@ func setupLogger(config internal.Config) {
 
 	consoleLogger := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "02 Jan 15:04"}
 	if config.Logger.Enabled {
-		fileLogger := &lumberjack.Logger{
+		fileLogger := consoleLogger
+		fileLogger.Out = &lumberjack.Logger{
 			Filename:   config.Logger.Filename,
 			MaxSize:    config.Logger.MaxSize,
 			MaxAge:     config.Logger.MaxAge,
@@ -70,6 +71,7 @@ func setupLogger(config internal.Config) {
 			LocalTime:  config.Logger.LocalTime,
 			Compress:   config.Logger.Compress,
 		}
+		fileLogger.NoColor = true
 		log.Logger = log.Output(zerolog.MultiLevelWriter(consoleLogger, fileLogger))
 	} else {
 		log.Logger = log.Output(consoleLogger)
