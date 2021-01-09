@@ -17,8 +17,10 @@ type (
 		DimensionCodec   DimensionCodec
 		Dimension        Dimension
 		WorldName        string
+		DimensionID      int32
 		HashedSeed       int64
 		MaxPlayers       int32
+		LevelType        string
 		ViewDistance     int32
 		ReducedDebug     bool
 		RespawnScreen    bool
@@ -231,75 +233,83 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 	}
 	packet.Gamemode = gamemode
 
-	previousGamemode, err := buffer.ReadInt8()
-	if err != nil {
-		return err
-	}
-	packet.PreviousGamemode = previousGamemode
+	if proto >= protocol.V1_16 {
+		previousGamemode, err := buffer.ReadInt8()
+		if err != nil {
+			return err
+		}
+		packet.PreviousGamemode = previousGamemode
 
-	worldCount, err := buffer.ReadVarInt()
-	if err != nil {
-		return err
-	}
+		worldCount, err := buffer.ReadVarInt()
+		if err != nil {
+			return err
+		}
 
-	var worldNames []string
-	for i := worldCount; i > 0; i-- {
+		var worldNames []string
+		for i := worldCount; i > 0; i-- {
+			worldName, err := buffer.ReadUtf(32767)
+			if err != nil {
+				return err
+			}
+			worldNames = append(worldNames, worldName)
+		}
+		packet.WorldNames = worldNames
+
+		_, dimensionCodecTag, err := nbt.Read(buffer)
+		if err != nil {
+			return err
+		}
+		dimensionCodec, err := DimensionCodecFromTag(dimensionCodecTag, proto)
+		if err != nil {
+			return err
+		}
+		packet.DimensionCodec = dimensionCodec
+
+		if proto >= protocol.V1_16_2 {
+			_, dimensionTag, err := nbt.Read(buffer)
+			if err != nil {
+				return err
+			}
+
+			dimension, err := DimensionFromTag(dimensionTag)
+			if err != nil {
+				return err
+			}
+
+			packet.Dimension = dimension
+			for _, dim := range packet.DimensionCodec.Dimensions {
+				if dim.ID == packet.Dimension.ID {
+					packet.Dimension.Name = dim.Name
+					break
+				}
+			}
+		} else {
+			dimensionName, err := buffer.ReadUtf(32767)
+			if err != nil {
+				return err
+			}
+
+			packet.Dimension = Dimension{Name: dimensionName}
+			for _, dim := range packet.DimensionCodec.Dimensions {
+				if dim.Name == dimensionName {
+					packet.Dimension = dim
+					break
+				}
+			}
+		}
+
 		worldName, err := buffer.ReadUtf(32767)
 		if err != nil {
 			return err
 		}
-		worldNames = append(worldNames, worldName)
-	}
-	packet.WorldNames = worldNames
-
-	_, dimensionCodecTag, err := nbt.Read(buffer)
-	if err != nil {
-		return err
-	}
-	dimensionCodec, err := DimensionCodecFromTag(dimensionCodecTag, proto)
-	if err != nil {
-		return err
-	}
-	packet.DimensionCodec = dimensionCodec
-
-	if proto >= protocol.V1_16_2 {
-		_, dimensionTag, err := nbt.Read(buffer)
-		if err != nil {
-			return err
-		}
-
-		dimension, err := DimensionFromTag(dimensionTag)
-		if err != nil {
-			return err
-		}
-
-		packet.Dimension = dimension
-		for _, dim := range packet.DimensionCodec.Dimensions {
-			if dim.ID == packet.Dimension.ID {
-				packet.Dimension.Name = dim.Name
-				break
-			}
-		}
+		packet.WorldName = worldName
 	} else {
-		dimensionName, err := buffer.ReadUtf(32767)
+		dimensionID, err := buffer.ReadInt32()
 		if err != nil {
 			return err
 		}
-
-		packet.Dimension = Dimension{Name: dimensionName}
-		for _, dim := range packet.DimensionCodec.Dimensions {
-			if dim.Name == dimensionName {
-				packet.Dimension = dim
-				break
-			}
-		}
+		packet.DimensionID = dimensionID
 	}
-
-	worldName, err := buffer.ReadUtf(32767)
-	if err != nil {
-		return err
-	}
-	packet.WorldName = worldName
 
 	hashedSeed, err := buffer.ReadInt64()
 	if err != nil {
@@ -307,11 +317,25 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 	}
 	packet.HashedSeed = hashedSeed
 
-	maxPlayers, err := buffer.ReadVarInt()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_16 {
+		maxPlayers, err := buffer.ReadVarInt()
+		if err != nil {
+			return err
+		}
+		packet.MaxPlayers = maxPlayers
+	} else {
+		maxPlayers, err := buffer.ReadUint8()
+		if err != nil {
+			return err
+		}
+		packet.MaxPlayers = int32(maxPlayers)
+
+		levelType, err := buffer.ReadUtf(16)
+		if err != nil {
+			return err
+		}
+		packet.LevelType = levelType
 	}
-	packet.MaxPlayers = maxPlayers
 
 	viewDistance, err := buffer.ReadVarInt()
 	if err != nil {
@@ -331,17 +355,19 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 	}
 	packet.RespawnScreen = respawnScreen
 
-	isDebug, err := buffer.ReadBool()
-	if err != nil {
-		return err
-	}
-	packet.IsDebug = isDebug
+	if proto >= protocol.V1_16 {
+		isDebug, err := buffer.ReadBool()
+		if err != nil {
+			return err
+		}
+		packet.IsDebug = isDebug
 
-	isFlat, err := buffer.ReadBool()
-	if err != nil {
-		return err
+		isFlat, err := buffer.ReadBool()
+		if err != nil {
+			return err
+		}
+		packet.IsFlat = isFlat
 	}
-	packet.IsFlat = isFlat
 
 	return nil
 }
@@ -361,44 +387,60 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		return err
 	}
 
-	if err := buffer.WriteInt8(packet.PreviousGamemode); err != nil {
-		return err
-	}
-
-	if err := buffer.WriteVarInt(int32(len(packet.WorldNames))); err != nil {
-		return err
-	}
-
-	for _, worldName := range packet.WorldNames {
-		if err := buffer.WriteUtf(worldName, 32767); err != nil {
+	if proto >= protocol.V1_16 {
+		if err := buffer.WriteInt8(packet.PreviousGamemode); err != nil {
 			return err
 		}
-	}
 
-	if err := nbt.Write(buffer, "", packet.DimensionCodec.ToCompound(proto)); err != nil {
-		return err
-	}
+		if err := buffer.WriteVarInt(int32(len(packet.WorldNames))); err != nil {
+			return err
+		}
 
-	if proto >= protocol.V1_16_2 {
-		if err := nbt.Write(buffer, "", packet.Dimension.ToCompound(proto)); err != nil {
+		for _, worldName := range packet.WorldNames {
+			if err := buffer.WriteUtf(worldName, 32767); err != nil {
+				return err
+			}
+		}
+
+		if err := nbt.Write(buffer, "", packet.DimensionCodec.ToCompound(proto)); err != nil {
+			return err
+		}
+
+		if proto >= protocol.V1_16_2 {
+			if err := nbt.Write(buffer, "", packet.Dimension.ToCompound(proto)); err != nil {
+				return err
+			}
+		} else {
+			if err := buffer.WriteUtf(packet.Dimension.Name, 32767); err != nil {
+				return err
+			}
+		}
+
+		if err := buffer.WriteUtf(packet.WorldName, 32767); err != nil {
 			return err
 		}
 	} else {
-		if err := buffer.WriteUtf(packet.Dimension.Name, 32767); err != nil {
+		if err := buffer.WriteInt32(packet.DimensionID); err != nil {
 			return err
 		}
-	}
-
-	if err := buffer.WriteUtf(packet.WorldName, 32767); err != nil {
-		return err
 	}
 
 	if err := buffer.WriteInt64(packet.HashedSeed); err != nil {
 		return err
 	}
 
-	if err := buffer.WriteVarInt(packet.MaxPlayers); err != nil {
-		return err
+	if proto >= protocol.V1_16 {
+		if err := buffer.WriteVarInt(packet.MaxPlayers); err != nil {
+			return err
+		}
+	} else {
+		if err := buffer.WriteUint8(uint8(packet.MaxPlayers)); err != nil {
+			return err
+		}
+
+		if err := buffer.WriteUtf(packet.LevelType, 16); err != nil {
+			return err
+		}
 	}
 
 	if err := buffer.WriteVarInt(packet.ViewDistance); err != nil {
@@ -413,12 +455,14 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		return err
 	}
 
-	if err := buffer.WriteBool(packet.IsDebug); err != nil {
-		return err
-	}
+	if proto >= protocol.V1_16 {
+		if err := buffer.WriteBool(packet.IsDebug); err != nil {
+			return err
+		}
 
-	if err := buffer.WriteBool(packet.IsFlat); err != nil {
-		return err
+		if err := buffer.WriteBool(packet.IsFlat); err != nil {
+			return err
+		}
 	}
 
 	return nil

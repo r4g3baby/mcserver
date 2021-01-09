@@ -69,6 +69,23 @@ var (
 )
 
 func init() {
+	if err := RegisterPackets(protocol.V1_15, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+		protocol.Play: {
+			protocol.ClientBound: {
+				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0E,
+				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1B,
+				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x21,
+				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x26,
+				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x36,
+			},
+			protocol.ServerBound: {
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0F,
+			},
+		},
+	}); err != nil {
+		panic(err)
+	}
+
 	if err := RegisterPackets(protocol.V1_16, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
@@ -103,6 +120,7 @@ func init() {
 		panic(err)
 	}
 
+	copyPackets(protocol.V1_15, protocol.V1_15_1, protocol.V1_15_2)
 	copyPackets(protocol.V1_16, protocol.V1_16_1)
 	copyPackets(protocol.V1_16_2, protocol.V1_16_3, protocol.V1_16_4)
 }
