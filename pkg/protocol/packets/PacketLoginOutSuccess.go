@@ -15,12 +15,24 @@ func (packet *PacketLoginOutSuccess) GetID(proto protocol.Protocol) (int32, erro
 	return GetPacketID(proto, protocol.Login, protocol.ClientBound, packet)
 }
 
-func (packet *PacketLoginOutSuccess) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
-	uniqueID, err := buffer.ReadUUID()
-	if err != nil {
-		return err
+func (packet *PacketLoginOutSuccess) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {
+	if proto >= protocol.V1_16 {
+		uniqueID, err := buffer.ReadUUID()
+		if err != nil {
+			return err
+		}
+		packet.UniqueID = uniqueID
+	} else {
+		uniqueID, err := buffer.ReadUtf(36)
+		if err != nil {
+			return err
+		}
+		parsedUUID, err := uuid.Parse(uniqueID)
+		if err != nil {
+			return err
+		}
+		packet.UniqueID = parsedUUID
 	}
-	packet.UniqueID = uniqueID
 
 	username, err := buffer.ReadUtf(16)
 	if err != nil {
@@ -31,9 +43,15 @@ func (packet *PacketLoginOutSuccess) Read(_ protocol.Protocol, buffer *bytes.Buf
 	return nil
 }
 
-func (packet *PacketLoginOutSuccess) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
-	if err := buffer.WriteUUID(packet.UniqueID); err != nil {
-		return err
+func (packet *PacketLoginOutSuccess) Write(proto protocol.Protocol, buffer *bytes.Buffer) error {
+	if proto >= protocol.V1_16 {
+		if err := buffer.WriteUUID(packet.UniqueID); err != nil {
+			return err
+		}
+	} else {
+		if err := buffer.WriteUtf(packet.UniqueID.String(), 36); err != nil {
+			return err
+		}
 	}
 
 	if err := buffer.WriteUtf(packet.Username, 16); err != nil {
