@@ -311,11 +311,13 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 		packet.DimensionID = dimensionID
 	}
 
-	hashedSeed, err := buffer.ReadInt64()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_15 {
+		hashedSeed, err := buffer.ReadInt64()
+		if err != nil {
+			return err
+		}
+		packet.HashedSeed = hashedSeed
 	}
-	packet.HashedSeed = hashedSeed
 
 	if proto >= protocol.V1_16 {
 		maxPlayers, err := buffer.ReadVarInt()
@@ -349,11 +351,13 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 	}
 	packet.ReducedDebug = reducedDebug
 
-	respawnScreen, err := buffer.ReadBool()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_15 {
+		respawnScreen, err := buffer.ReadBool()
+		if err != nil {
+			return err
+		}
+		packet.RespawnScreen = respawnScreen
 	}
-	packet.RespawnScreen = respawnScreen
 
 	if proto >= protocol.V1_16 {
 		isDebug, err := buffer.ReadBool()
@@ -425,8 +429,10 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		}
 	}
 
-	if err := buffer.WriteInt64(packet.HashedSeed); err != nil {
-		return err
+	if proto >= protocol.V1_15 {
+		if err := buffer.WriteInt64(packet.HashedSeed); err != nil {
+			return err
+		}
 	}
 
 	if proto >= protocol.V1_16 {
@@ -451,8 +457,10 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		return err
 	}
 
-	if err := buffer.WriteBool(packet.RespawnScreen); err != nil {
-		return err
+	if proto >= protocol.V1_15 {
+		if err := buffer.WriteBool(packet.RespawnScreen); err != nil {
+			return err
+		}
 	}
 
 	if proto >= protocol.V1_16 {
