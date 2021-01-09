@@ -18,6 +18,7 @@ type (
 		Dimension        Dimension
 		WorldName        string
 		DimensionID      int32
+		Difficulty       uint8
 		HashedSeed       int64
 		MaxPlayers       int32
 		LevelType        string
@@ -311,6 +312,14 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 		packet.DimensionID = dimensionID
 	}
 
+	if proto < protocol.V1_14 {
+		difficulty, err := buffer.ReadUint8()
+		if err != nil {
+			return err
+		}
+		packet.Difficulty = difficulty
+	}
+
 	if proto >= protocol.V1_15 {
 		hashedSeed, err := buffer.ReadInt64()
 		if err != nil {
@@ -339,11 +348,13 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 		packet.LevelType = levelType
 	}
 
-	viewDistance, err := buffer.ReadVarInt()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_14 {
+		viewDistance, err := buffer.ReadVarInt()
+		if err != nil {
+			return err
+		}
+		packet.ViewDistance = viewDistance
 	}
-	packet.ViewDistance = viewDistance
 
 	reducedDebug, err := buffer.ReadBool()
 	if err != nil {
@@ -429,6 +440,12 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		}
 	}
 
+	if proto < protocol.V1_14 {
+		if err := buffer.WriteUint8(packet.Difficulty); err != nil {
+			return err
+		}
+	}
+
 	if proto >= protocol.V1_15 {
 		if err := buffer.WriteInt64(packet.HashedSeed); err != nil {
 			return err
@@ -449,8 +466,10 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 		}
 	}
 
-	if err := buffer.WriteVarInt(packet.ViewDistance); err != nil {
-		return err
+	if proto >= protocol.V1_14 {
+		if err := buffer.WriteVarInt(packet.ViewDistance); err != nil {
+			return err
+		}
 	}
 
 	if err := buffer.WriteBool(packet.ReducedDebug); err != nil {

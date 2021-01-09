@@ -14,29 +14,33 @@ func (packet *PacketPlayOutServerDifficulty) GetID(proto protocol.Protocol) (int
 	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
-func (packet *PacketPlayOutServerDifficulty) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutServerDifficulty) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {
 	difficulty, err := buffer.ReadUint8()
 	if err != nil {
 		return err
 	}
 	packet.Difficulty = difficulty
 
-	locked, err := buffer.ReadBool()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_14 {
+		locked, err := buffer.ReadBool()
+		if err != nil {
+			return err
+		}
+		packet.Locked = locked
 	}
-	packet.Locked = locked
 
 	return nil
 }
 
-func (packet *PacketPlayOutServerDifficulty) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutServerDifficulty) Write(proto protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteUint8(packet.Difficulty); err != nil {
 		return err
 	}
 
-	if err := buffer.WriteBool(packet.Locked); err != nil {
-		return err
+	if proto >= protocol.V1_14 {
+		if err := buffer.WriteBool(packet.Locked); err != nil {
+			return err
+		}
 	}
 
 	return nil
