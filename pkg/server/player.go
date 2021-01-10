@@ -14,7 +14,7 @@ type Player struct {
 	mutex             sync.RWMutex
 	keepAlivePending  bool
 	lastKeepAliveTime int64
-	lastKeepAliveID   int64
+	lastKeepAliveID   int32
 }
 
 func (player *Player) GetServer() *Server {
@@ -61,13 +61,13 @@ func (player *Player) GetLastKeepAliveTime() int64 {
 	return player.lastKeepAliveTime
 }
 
-func (player *Player) SetLastKeepAliveID(lastKeepAliveID int64) {
+func (player *Player) SetLastKeepAliveID(lastKeepAliveID int32) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
 	player.lastKeepAliveID = lastKeepAliveID
 }
 
-func (player *Player) GetLastKeepAliveID() int64 {
+func (player *Player) GetLastKeepAliveID() int32 {
 	player.mutex.RLock()
 	defer player.mutex.RUnlock()
 	return player.lastKeepAliveID

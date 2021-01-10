@@ -166,7 +166,7 @@ func (server *Server) sendKeepAlive() {
 		if currentTime-player.GetLastKeepAliveTime() >= 15*int64(time.Second) {
 			if !player.IsKeepAlivePending() {
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
-					KeepAliveID: random.Int63n(math.MaxInt32),
+					KeepAliveID: random.Int31n(math.MaxInt32),
 				}); err != nil {
 					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to send keep alive packet")
 				}
