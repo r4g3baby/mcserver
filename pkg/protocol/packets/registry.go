@@ -205,6 +205,8 @@ func GetPacketID(proto protocol.Protocol, state protocol.State, direction protoc
 				}
 			}
 		}
+	} else {
+		return GetPacketID(protocol.Unknown, state, direction, packet)
 	}
 	return 0, errors.New("no packet id found for the given options")
 }
@@ -218,6 +220,8 @@ func GetPacketByID(proto protocol.Protocol, state protocol.State, direction prot
 				}
 			}
 		}
+	} else {
+		return GetPacketByID(protocol.Unknown, state, direction, id)
 	}
 	return nil, fmt.Errorf("no packet found with id %d", id)
 }
