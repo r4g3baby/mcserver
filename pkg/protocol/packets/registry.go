@@ -69,7 +69,7 @@ var (
 )
 
 func init() {
-	if err := RegisterPackets(protocol.V1_10, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := RegisterPackets(protocol.V1_9, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -205,7 +205,7 @@ func init() {
 		panic(err)
 	}
 
-	copyPackets(protocol.V1_10, protocol.V1_11, protocol.V1_11_1)
+	copyPackets(protocol.V1_9, protocol.V1_9_1, protocol.V1_9_2, protocol.V1_9_3, protocol.V1_10, protocol.V1_11, protocol.V1_11_1)
 	copyPackets(protocol.V1_12_1, protocol.V1_12_2)
 	copyPackets(protocol.V1_13, protocol.V1_13_1, protocol.V1_13_2)
 	copyPackets(protocol.V1_14, protocol.V1_14_1, protocol.V1_14_2, protocol.V1_14_3, protocol.V1_14_4)

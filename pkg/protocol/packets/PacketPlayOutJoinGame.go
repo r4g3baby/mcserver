@@ -17,7 +17,7 @@ type (
 		DimensionCodec   DimensionCodec
 		Dimension        Dimension
 		WorldName        string
-		DimensionID      int32
+		DimensionID      int8
 		Difficulty       uint8
 		HashedSeed       int64
 		MaxPlayers       int32
@@ -305,11 +305,19 @@ func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes
 		}
 		packet.WorldName = worldName
 	} else {
-		dimensionID, err := buffer.ReadInt32()
-		if err != nil {
-			return err
+		if proto >= protocol.V1_9_1 {
+			dimensionID, err := buffer.ReadInt32()
+			if err != nil {
+				return err
+			}
+			packet.DimensionID = int8(dimensionID)
+		} else {
+			dimensionID, err := buffer.ReadInt8()
+			if err != nil {
+				return err
+			}
+			packet.DimensionID = dimensionID
 		}
-		packet.DimensionID = dimensionID
 	}
 
 	if proto < protocol.V1_14 {
@@ -435,8 +443,14 @@ func (packet *PacketPlayOutJoinGame) Write(proto protocol.Protocol, buffer *byte
 			return err
 		}
 	} else {
-		if err := buffer.WriteInt32(packet.DimensionID); err != nil {
-			return err
+		if proto >= protocol.V1_9_1 {
+			if err := buffer.WriteInt32(int32(packet.DimensionID)); err != nil {
+				return err
+			}
+		} else {
+			if err := buffer.WriteInt8(packet.DimensionID); err != nil {
+				return err
+			}
 		}
 	}
 
