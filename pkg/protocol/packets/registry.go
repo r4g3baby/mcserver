@@ -69,6 +69,23 @@ var (
 )
 
 func init() {
+	if err := RegisterPackets(protocol.V1_8, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+		protocol.Play: {
+			protocol.ClientBound: {
+				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x00,
+				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x01,
+				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x08,
+				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x40,
+				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x41,
+			},
+			protocol.ServerBound: {
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x00,
+			},
+		},
+	}); err != nil {
+		panic(err)
+	}
+
 	if err := RegisterPackets(protocol.V1_9, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {

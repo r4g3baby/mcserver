@@ -16,7 +16,7 @@ func (packet *PacketPlayOutPositionAndLook) GetID(proto protocol.Protocol) (int3
 	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
-func (packet *PacketPlayOutPositionAndLook) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutPositionAndLook) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {
 	x, err := buffer.ReadFloat64()
 	if err != nil {
 		return err
@@ -53,16 +53,18 @@ func (packet *PacketPlayOutPositionAndLook) Read(_ protocol.Protocol, buffer *by
 	}
 	packet.Flags = flags
 
-	teleportID, err := buffer.ReadVarInt()
-	if err != nil {
-		return err
+	if proto >= protocol.V1_9 {
+		teleportID, err := buffer.ReadVarInt()
+		if err != nil {
+			return err
+		}
+		packet.TeleportID = teleportID
 	}
-	packet.TeleportID = teleportID
 
 	return nil
 }
 
-func (packet *PacketPlayOutPositionAndLook) Write(_ protocol.Protocol, buffer *bytes.Buffer) error {
+func (packet *PacketPlayOutPositionAndLook) Write(proto protocol.Protocol, buffer *bytes.Buffer) error {
 	if err := buffer.WriteFloat64(packet.X); err != nil {
 		return err
 	}
@@ -87,8 +89,10 @@ func (packet *PacketPlayOutPositionAndLook) Write(_ protocol.Protocol, buffer *b
 		return err
 	}
 
-	if err := buffer.WriteVarInt(packet.TeleportID); err != nil {
-		return err
+	if proto >= protocol.V1_9 {
+		if err := buffer.WriteVarInt(packet.TeleportID); err != nil {
+			return err
+		}
 	}
 
 	return nil
