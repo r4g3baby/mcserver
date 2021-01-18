@@ -6,14 +6,18 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type Player struct {
 	conn *Connection
 
+	latency atomic.Value
+
 	mutex             sync.RWMutex
 	keepAlivePending  bool
-	lastKeepAliveTime int64
+	lastKeepAliveTime time.Time
 	lastKeepAliveID   int32
 }
 
@@ -37,6 +41,14 @@ func (player *Player) GetState() protocol.State {
 	return player.conn.GetState()
 }
 
+func (player *Player) SetLatency(duration time.Duration) {
+	player.latency.Store(duration)
+}
+
+func (player *Player) GetLatency() time.Duration {
+	return player.latency.Load().(time.Duration)
+}
+
 func (player *Player) SetKeepAlivePending(keepAlivePending bool) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
@@ -49,13 +61,13 @@ func (player *Player) IsKeepAlivePending() bool {
 	return player.keepAlivePending
 }
 
-func (player *Player) SetLastKeepAliveTime(lastKeepAliveTime int64) {
+func (player *Player) SetLastKeepAliveTime(lastKeepAliveTime time.Time) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
 	player.lastKeepAliveTime = lastKeepAliveTime
 }
 
-func (player *Player) GetLastKeepAliveTime() int64 {
+func (player *Player) GetLastKeepAliveTime() time.Time {
 	player.mutex.RLock()
 	defer player.mutex.RUnlock()
 	return player.lastKeepAliveTime
@@ -90,7 +102,9 @@ func (player *Player) Kick(reason []chat.Component) error {
 }
 
 func NewPlayer(conn *Connection) *Player {
-	return &Player{
+	player := &Player{
 		conn: conn,
 	}
+	player.SetLatency(-1)
+	return player
 }

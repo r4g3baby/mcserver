@@ -238,6 +238,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 		case *packets.PacketPlayInKeepAlive:
 			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
 				if player.IsKeepAlivePending() && p.KeepAliveID == player.GetLastKeepAliveID() {
+					player.SetLatency(time.Since(player.GetLastKeepAliveTime()))
 					player.SetKeepAlivePending(false)
 				}
 			}
@@ -296,8 +297,7 @@ func (conn *Connection) handlePrePacketWrite(packet protocol.Packet) error {
 		switch p := packet.(type) {
 		case *packets.PacketPlayOutKeepAlive:
 			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
-				currentTime := time.Now().UnixNano()
-				player.SetLastKeepAliveTime(currentTime)
+				player.SetLastKeepAliveTime(time.Now())
 				player.SetLastKeepAliveID(p.KeepAliveID)
 				player.SetKeepAlivePending(true)
 			}
