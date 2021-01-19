@@ -41,15 +41,15 @@ func (player *Player) GetState() protocol.State {
 	return player.conn.GetState()
 }
 
-func (player *Player) SetLatency(duration time.Duration) {
-	player.latency.Store(duration)
+func (player *Player) setLatency(latency time.Duration) {
+	player.latency.Store(latency)
 }
 
 func (player *Player) GetLatency() time.Duration {
 	return player.latency.Load().(time.Duration)
 }
 
-func (player *Player) SetKeepAlivePending(keepAlivePending bool) {
+func (player *Player) setKeepAlivePending(keepAlivePending bool) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
 	player.keepAlivePending = keepAlivePending
@@ -61,7 +61,7 @@ func (player *Player) IsKeepAlivePending() bool {
 	return player.keepAlivePending
 }
 
-func (player *Player) SetLastKeepAliveTime(lastKeepAliveTime time.Time) {
+func (player *Player) setLastKeepAliveTime(lastKeepAliveTime time.Time) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
 	player.lastKeepAliveTime = lastKeepAliveTime
@@ -73,7 +73,7 @@ func (player *Player) GetLastKeepAliveTime() time.Time {
 	return player.lastKeepAliveTime
 }
 
-func (player *Player) SetLastKeepAliveID(lastKeepAliveID int32) {
+func (player *Player) setLastKeepAliveID(lastKeepAliveID int32) {
 	player.mutex.Lock()
 	defer player.mutex.Unlock()
 	player.lastKeepAliveID = lastKeepAliveID
@@ -105,6 +105,6 @@ func NewPlayer(conn *Connection) *Player {
 	player := &Player{
 		conn: conn,
 	}
-	player.SetLatency(-1)
+	player.setLatency(-1)
 	return player
 }
