@@ -367,12 +367,10 @@ func (conn *Connection) readLength() (int32, error) {
 
 func NewConnection(conn net.Conn, server *Server) *Connection {
 	return &Connection{
-		conn,
-		server,
-		sync.RWMutex{},
-		uuid.Nil,
-		"",
-		protocol.Unknown,
-		protocol.Handshaking,
+		Conn:     conn,
+		server:   server,
+		uniqueID: uuid.Nil,
+		protocol: protocol.Unknown,
+		state:    protocol.Handshaking,
 	}
 }

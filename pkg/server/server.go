@@ -198,7 +198,6 @@ func (server *Server) removePlayer(uniqueID uuid.UUID) {
 func NewServer(config Config) *Server {
 	return &Server{
 		config:  config,
-		wait:    sync.WaitGroup{},
 		players: sync.Map{},
 	}
 }
