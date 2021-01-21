@@ -96,7 +96,7 @@ func (server *Server) Stop() error {
 	}
 
 	log.Info().Msg("stopping server")
-	server.ForEachPlayer(func(player *Player) {
+	server.ForEachPlayer(func(player *Player) bool {
 		_ = player.Kick([]chat.Component{
 			&chat.TextComponent{
 				Text: "Server is shutting down",
@@ -105,6 +105,7 @@ func (server *Server) Stop() error {
 				},
 			},
 		})
+		return true
 	})
 
 	server.shutdown()
@@ -119,6 +120,24 @@ func (server *Server) Stop() error {
 	return nil
 }
 
+func (server *Server) GetPlayerCount() int {
+	var count int
+	server.players.Range(func(_, _ interface{}) bool {
+		count++
+		return true
+	})
+	return count
+}
+
+func (server *Server) GetPlayers() []*Player {
+	var players []*Player
+	server.players.Range(func(_, value interface{}) bool {
+		players = append(players, value.(*Player))
+		return true
+	})
+	return players
+}
+
 func (server *Server) GetPlayer(uniqueID uuid.UUID) *Player {
 	if value, ok := server.players.Load(uniqueID); ok {
 		return value.(*Player)
@@ -126,10 +145,9 @@ func (server *Server) GetPlayer(uniqueID uuid.UUID) *Player {
 	return nil
 }
 
-func (server *Server) ForEachPlayer(fn func(player *Player)) {
-	server.players.Range(func(key, value interface{}) bool {
-		fn(value.(*Player))
-		return true
+func (server *Server) ForEachPlayer(fn func(player *Player) bool) {
+	server.players.Range(func(_, value interface{}) bool {
+		return fn(value.(*Player))
 	})
 }
 
@@ -161,7 +179,7 @@ func (server *Server) handleClient(conn net.Conn) {
 
 func (server *Server) sendKeepAlive() {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	server.ForEachPlayer(func(player *Player) {
+	server.ForEachPlayer(func(player *Player) bool {
 		if time.Since(player.GetLastKeepAliveTime()) >= 15*time.Second {
 			if !player.IsKeepAlivePending() {
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
@@ -182,6 +200,7 @@ func (server *Server) sendKeepAlive() {
 				}
 			}
 		}
+		return true
 	})
 }
 

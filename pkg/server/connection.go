@@ -161,8 +161,8 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 						Protocol: int(conn.GetProtocol()),
 					},
 					Players: packets.Players{
-						Max:    100,
-						Online: 0,
+						Max:    conn.server.GetPlayerCount(),
+						Online: conn.server.GetPlayerCount(),
 						Sample: []packets.Sample{
 							{chat.ColorChar + "bHello World!", uuid.Nil},
 						},
