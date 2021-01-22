@@ -101,7 +101,7 @@ func (player *Player) Kick(reason []chat.Component) error {
 	}
 }
 
-func NewPlayer(conn *Connection) *Player {
+func newPlayer(conn *Connection) *Player {
 	player := &Player{
 		conn: conn,
 	}

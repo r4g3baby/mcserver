@@ -204,14 +204,24 @@ func (server *Server) sendKeepAlive() {
 	})
 }
 
-func (server *Server) createPlayer(conn *Connection) *Player {
-	player := NewPlayer(conn)
+func (server *Server) addPlayer(conn *Connection) *Player {
+	player := newPlayer(conn)
 	server.players.Store(player.GetUniqueID(), player)
+	log.Info().
+		Str("name", player.GetUsername()).
+		Stringer("uuid", player.GetUniqueID()).
+		Msg("player joined the server")
 	return player
 }
 
 func (server *Server) removePlayer(uniqueID uuid.UUID) {
-	server.players.Delete(uniqueID)
+	if player, ok := server.players.LoadAndDelete(uniqueID); ok {
+		player := player.(*Player)
+		log.Info().
+			Str("name", player.GetUsername()).
+			Stringer("uuid", player.GetUniqueID()).
+			Msg("player left the server")
+	}
 }
 
 func NewServer(config Config) *Server {

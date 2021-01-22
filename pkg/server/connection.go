@@ -194,7 +194,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 			conn.SetUsername(p.Username)
 			conn.SetUniqueID(util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.GetUsername())))
 
-			player := conn.server.createPlayer(conn)
+			player := conn.server.addPlayer(conn)
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
 				UniqueID: player.GetUniqueID(),
 				Username: player.GetUsername(),
