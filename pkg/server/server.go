@@ -24,32 +24,40 @@ var (
 type Server struct {
 	config Config
 
-	listener net.Listener
-	wait     sync.WaitGroup
-	shutdown context.CancelFunc
-	players  sync.Map
+	players sync.Map
+
+	running  bool
+	shutdown func()
 }
 
 func (server *Server) Start() error {
-	if server.listener != nil {
+	if server.running {
 		return ErrServerRunning
 	}
+	server.running = true
 
 	bind := net.JoinHostPort(server.config.Host, strconv.Itoa(server.config.Port))
 	listener, err := net.Listen("tcp", bind)
 	if err != nil {
+		server.running = false
 		return err
 	}
-	server.listener = listener
 
 	log.Info().Stringer("addr", listener.Addr()).Msg("server listening for new connections")
 
+	var wait sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
-	server.shutdown = cancel
+	server.shutdown = func() {
+		cancel()
+		if err := listener.Close(); err != nil {
+			log.Error().Err(err).Msg("got error while closing listener")
+		}
+		wait.Wait()
+	}
 
-	server.wait.Add(1)
+	wait.Add(2)
 	go func() {
-		defer server.wait.Done()
+		defer wait.Done()
 
 		for {
 			select {
@@ -70,9 +78,8 @@ func (server *Server) Start() error {
 		}
 	}()
 
-	server.wait.Add(1)
 	go func() {
-		defer server.wait.Done()
+		defer wait.Done()
 
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
@@ -91,11 +98,13 @@ func (server *Server) Start() error {
 }
 
 func (server *Server) Stop() error {
-	if server.listener == nil {
+	if !server.running {
 		return ErrServerStopped
 	}
 
 	log.Info().Msg("stopping server")
+
+	server.shutdown()
 	server.ForEachPlayer(func(player *Player) bool {
 		_ = player.Kick([]chat.Component{
 			&chat.TextComponent{
@@ -108,14 +117,7 @@ func (server *Server) Stop() error {
 		return true
 	})
 
-	server.shutdown()
-
-	if err := server.listener.Close(); err != nil {
-		log.Error().Err(err).Msg("got error while closing listener")
-	}
-
-	server.wait.Wait()
-	server.listener = nil
+	server.running = false
 
 	return nil
 }
