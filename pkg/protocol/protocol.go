@@ -83,17 +83,21 @@ const (
 	V1_16_4 Protocol = 754
 )
 
-var SupportedProtocols = []Protocol{
-	V1_8,
-	V1_9, V1_9_1, V1_9_2, V1_9_3,
-	V1_10,
-	V1_11, V1_11_1,
-	V1_12, V1_12_1, V1_12_2,
-	V1_13, V1_13_1, V1_13_2,
-	V1_14, V1_14_1, V1_14_2, V1_14_3, V1_14_4,
-	V1_15, V1_15_1, V1_15_2,
-	V1_16, V1_16_1, V1_16_2, V1_16_3, V1_16_4,
-}
+var (
+	SupportedProtocols = []Protocol{
+		V1_8,
+		V1_9, V1_9_1, V1_9_2, V1_9_3,
+		V1_10,
+		V1_11, V1_11_1,
+		V1_12, V1_12_1, V1_12_2,
+		V1_13, V1_13_1, V1_13_2,
+		V1_14, V1_14_1, V1_14_2, V1_14_3, V1_14_4,
+		V1_15, V1_15_1, V1_15_2,
+		V1_16, V1_16_1, V1_16_2, V1_16_3, V1_16_4,
+	}
+	LowestProtocol  = SupportedProtocols[0]
+	HighestProtocol = SupportedProtocols[len(SupportedProtocols)-1]
+)
 
 func IsSupported(protocol Protocol) bool {
 	for _, x := range SupportedProtocols {
