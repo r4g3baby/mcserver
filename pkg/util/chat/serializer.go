@@ -25,12 +25,55 @@ type Serializer struct {
 
 var serializer = Serializer{}
 
+func ToLegacyText(c []Component) string {
+	return serializer.ToLegacyText(c)
+}
+
 func ToJSON(c []Component) ([]byte, error) {
 	return serializer.ToJSON(c)
 }
 
 func FromJSON(data []byte) ([]Component, error) {
 	return serializer.FromJSON(data)
+}
+
+func (s *Serializer) ToLegacyText(components []Component) string {
+	var text strings.Builder
+	for _, c := range components {
+		if c.IsBold() {
+			text.WriteString(ColorChar + Bold.Code)
+		}
+		if c.IsItalic() {
+			text.WriteString(ColorChar + Italic.Code)
+		}
+		if c.IsObfuscated() {
+			text.WriteString(ColorChar + Obfuscated.Code)
+		}
+		if c.IsStrikethrough() {
+			text.WriteString(ColorChar + Strikethrough.Code)
+		}
+		if c.IsUnderlined() {
+			text.WriteString(ColorChar + Underline.Code)
+		}
+
+		color := c.GetColor()
+		if color != nil {
+			text.WriteString(ColorChar)
+			if color.Name == "" {
+				text.WriteString(FindNearest(*color).Code)
+			} else {
+				text.WriteString(color.Code)
+			}
+		}
+
+		switch t := c.(type) {
+		case *TextComponent:
+			text.WriteString(t.Text)
+		}
+
+		text.WriteString(s.ToLegacyText(c.GetExtra()))
+	}
+	return text.String()
 }
 
 func (s *Serializer) ToJSON(components []Component) ([]byte, error) {
