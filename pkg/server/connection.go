@@ -194,7 +194,20 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 			conn.SetUsername(p.Username)
 			conn.SetUniqueID(util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.GetUsername())))
 
-			player := conn.server.addPlayer(conn)
+			player, online := conn.server.addPlayer(conn)
+			if online {
+				return conn.WritePacket(&packets.PacketLoginOutDisconnect{
+					Reason: []chat.Component{
+						&chat.TextComponent{
+							Text: "You are already connected to this server!",
+							BaseComponent: chat.BaseComponent{
+								Color: &chat.Red,
+							},
+						},
+					},
+				})
+			}
+
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
 				UniqueID: player.GetUniqueID(),
 				Username: player.GetUsername(),

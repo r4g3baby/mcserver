@@ -206,14 +206,16 @@ func (server *Server) sendKeepAlive() {
 	})
 }
 
-func (server *Server) addPlayer(conn *Connection) *Player {
-	player := newPlayer(conn)
-	server.players.Store(player.GetUniqueID(), player)
-	log.Info().
-		Str("name", player.GetUsername()).
-		Stringer("uuid", player.GetUniqueID()).
-		Msg("player joined the server")
-	return player
+func (server *Server) addPlayer(conn *connection) (*Player, bool) {
+	value, loaded := server.players.LoadOrStore(conn.GetUniqueID(), newPlayer(conn))
+	player := value.(*Player)
+	if !loaded {
+		log.Info().
+			Str("name", player.GetUsername()).
+			Stringer("uuid", player.GetUniqueID()).
+			Msg("player joined the server")
+	}
+	return player, loaded
 }
 
 func (server *Server) removePlayer(uniqueID uuid.UUID) {
