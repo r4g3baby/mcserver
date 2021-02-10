@@ -73,13 +73,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x00,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x02,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x01,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x08,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x40,
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x41,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x00,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x01,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x00,
 			},
 		},
 	}); err != nil {
@@ -90,13 +92,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0F,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x23,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x2E,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0B,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x02,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0B,
 			},
 		},
 	}); err != nil {
@@ -107,13 +111,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0F,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x23,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x2E,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0C,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x03,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0C,
 			},
 		},
 	}); err != nil {
@@ -124,13 +130,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0F,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x23,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x2F,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0B,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x02,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0B,
 			},
 		},
 	}); err != nil {
@@ -141,13 +149,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0E,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1B,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x21,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x25,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x32,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0E,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x02,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0E,
 			},
 		},
 	}); err != nil {
@@ -158,13 +168,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0E,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x20,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x25,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x35,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0F,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x03,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0F,
 			},
 		},
 	}); err != nil {
@@ -175,13 +187,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0E,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0F,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1B,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x21,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x26,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x36,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x0F,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x03,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x0F,
 			},
 		},
 	}); err != nil {
@@ -192,13 +206,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0E,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x1A,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x20,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x25,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x35,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x10,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x03,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x10,
 			},
 		},
 	}); err != nil {
@@ -209,13 +225,15 @@ func init() {
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
+				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0E,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x19,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x24,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x34,
 			},
 			protocol.ServerBound: {
-				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem(): 0x10,
+				reflect.TypeOf((*PacketPlayInChatMessage)(nil)).Elem(): 0x03,
+				reflect.TypeOf((*PacketPlayInKeepAlive)(nil)).Elem():   0x10,
 			},
 		},
 	}); err != nil {
