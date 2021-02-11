@@ -248,6 +248,38 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 		}
 	case protocol.Play:
 		switch p := packet.(type) {
+		case *packets.PacketPlayInChatMessage:
+			conn.server.ForEachPlayer(func(player *Player) bool {
+				_ = player.SendPacket(&packets.PacketPlayOutChatMessage{
+					Message: []chat.Component{
+						&chat.TranslatableComponent{
+							Translate: "chat.type.text",
+							With: []chat.Component{
+								&chat.TextComponent{
+									Text: conn.GetUsername(),
+									BaseComponent: chat.BaseComponent{
+										ClickEvent: &chat.ClickEvent{
+											Action: chat.SuggestCommandClickAction,
+											Value:  "/msg " + conn.GetUsername(),
+										},
+										HoverEvent: &chat.HoverEvent{
+											Action:   chat.ShowEntityHoverAction,
+											Contents: "{id:" + conn.GetUniqueID().String() + ",name:" + conn.GetUsername() + "}",
+										},
+										Insertion: conn.GetUsername(),
+									},
+								},
+								&chat.TextComponent{
+									Text: p.Message,
+								},
+							},
+						},
+					},
+					Position: 0,
+					Sender:   conn.GetUniqueID(),
+				})
+				return true
+			})
 		case *packets.PacketPlayInKeepAlive:
 			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
 				if player.IsKeepAlivePending() && p.KeepAliveID == player.GetLastKeepAliveID() {
