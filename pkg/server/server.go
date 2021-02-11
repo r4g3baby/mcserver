@@ -206,7 +206,7 @@ func (server *Server) sendKeepAlive() {
 	})
 }
 
-func (server *Server) addPlayer(conn *connection) (*Player, bool) {
+func (server *Server) addPlayer(conn *Connection) (*Player, bool) {
 	value, loaded := server.players.LoadOrStore(conn.GetUniqueID(), newPlayer(conn))
 	player := value.(*Player)
 	if !loaded {
