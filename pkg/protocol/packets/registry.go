@@ -28,8 +28,9 @@ var (
 			},
 			protocol.Login: {
 				protocol.ClientBound: {
-					reflect.TypeOf((*PacketLoginOutDisconnect)(nil)).Elem(): 0x00,
-					reflect.TypeOf((*PacketLoginOutSuccess)(nil)).Elem():    0x02,
+					reflect.TypeOf((*PacketLoginOutDisconnect)(nil)).Elem():  0x00,
+					reflect.TypeOf((*PacketLoginOutSuccess)(nil)).Elem():     0x02,
+					reflect.TypeOf((*PacketLoginOutCompression)(nil)).Elem(): 0x03,
 				},
 				protocol.ServerBound: {
 					reflect.TypeOf((*PacketLoginInStart)(nil)).Elem(): 0x00,

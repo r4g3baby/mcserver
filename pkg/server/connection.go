@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/klauspost/compress/zlib"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util"
@@ -23,11 +24,13 @@ type Connection struct {
 
 	server *Server
 
-	mutex    sync.RWMutex
-	uniqueID uuid.UUID
-	username string
-	protocol protocol.Protocol
-	state    protocol.State
+	mutex                sync.RWMutex
+	uniqueID             uuid.UUID
+	username             string
+	protocol             protocol.Protocol
+	state                protocol.State
+	compressionThreshold int
+	compression          bool
 }
 
 func (conn *Connection) SetUniqueID(uniqueID uuid.UUID) {
@@ -78,6 +81,25 @@ func (conn *Connection) GetState() protocol.State {
 	return conn.state
 }
 
+func (conn *Connection) SetCompressionThreshold(threshold int) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.compressionThreshold = threshold
+	conn.compression = threshold >= 0
+}
+
+func (conn *Connection) GetCompressionThreshold() int {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.compressionThreshold
+}
+
+func (conn *Connection) UseCompression() bool {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.compression
+}
+
 func (conn *Connection) Close() error {
 	conn.server.removePlayer(conn.GetUniqueID())
 	return conn.Conn.Close()
@@ -104,6 +126,31 @@ func (conn *Connection) ReadPacket() error {
 	}
 
 	packetData := bytes.NewBuffer(payload)
+	if conn.UseCompression() {
+		dataLength, err := packetData.ReadVarInt()
+		if err != nil {
+			return err
+		}
+
+		if dataLength > int32(conn.GetCompressionThreshold()) {
+			return errors.New("fat")
+		} else if dataLength > 0 {
+			zlibReader, err := zlib.NewReader(packetData)
+			if err != nil {
+				return err
+			}
+			var uncompressedData = make([]byte, length)
+			if _, err = io.ReadFull(zlibReader, uncompressedData); err != nil {
+				return err
+			}
+			if err := zlibReader.Close(); err != nil {
+				return err
+			}
+
+			packetData = bytes.NewBuffer(uncompressedData)
+		}
+	}
+
 	packetID, err := packetData.ReadVarInt()
 	if err != nil {
 		return err
@@ -115,6 +162,7 @@ func (conn *Connection) ReadPacket() error {
 			e.Str("id", fmt.Sprintf("%#0X", packetID))
 			e.Stringer("state", conn.GetState())
 			e.Int32("protocol", int32(conn.GetProtocol()))
+			e.Bool("compression", conn.UseCompression())
 			e.Msg("received unknown packet")
 		}
 		return nil
@@ -125,6 +173,7 @@ func (conn *Connection) ReadPacket() error {
 		e.Stringer("type", reflect.TypeOf(packet))
 		e.Stringer("state", conn.GetState())
 		e.Int32("protocol", int32(conn.GetProtocol()))
+		e.Bool("compression", conn.UseCompression())
 		e.Msg("received packet")
 	}
 
@@ -206,6 +255,12 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 						},
 					},
 				})
+			}
+
+			if err := conn.WritePacket(&packets.PacketLoginOutCompression{
+				Threshold: 256,
+			}); err != nil {
+				return err
 			}
 
 			if err := conn.WritePacket(&packets.PacketLoginOutSuccess{
@@ -308,13 +363,48 @@ func (conn *Connection) WritePacket(packet protocol.Packet) error {
 		return err
 	}
 
-	buffer := bytes.NewBuffer(nil)
-	if err := buffer.WriteVarInt(int32(packetData.Len())); err != nil {
-		return err
-	}
+	dataLength := packetData.Len()
 
-	if _, err := packetData.WriteTo(buffer); err != nil {
-		return err
+	buffer := bytes.NewBuffer(nil)
+	if conn.UseCompression() {
+		data := bytes.NewBuffer(nil)
+		if dataLength >= conn.GetCompressionThreshold() {
+			if err := data.WriteVarInt(int32(dataLength)); err != nil {
+				return err
+			}
+
+			zlibWriter := zlib.NewWriter(data)
+			if _, err := packetData.WriteTo(zlibWriter); err != nil {
+				return err
+			}
+			if err := zlibWriter.Close(); err != nil {
+				return err
+			}
+		} else {
+			if err := data.WriteVarInt(0); err != nil {
+				return err
+			}
+
+			if _, err := packetData.WriteTo(data); err != nil {
+				return err
+			}
+		}
+
+		if err := buffer.WriteVarInt(int32(data.Len())); err != nil {
+			return err
+		}
+
+		if _, err := data.WriteTo(buffer); err != nil {
+			return err
+		}
+	} else {
+		if err := buffer.WriteVarInt(int32(dataLength)); err != nil {
+			return err
+		}
+
+		if _, err := packetData.WriteTo(buffer); err != nil {
+			return err
+		}
 	}
 
 	if err := conn.handlePrePacketWrite(packet); err != nil {
@@ -330,6 +420,7 @@ func (conn *Connection) WritePacket(packet protocol.Packet) error {
 		e.Stringer("type", reflect.TypeOf(packet))
 		e.Stringer("state", conn.GetState())
 		e.Int32("protocol", int32(conn.GetProtocol()))
+		e.Bool("compression", conn.UseCompression())
 		e.Msg("sent packet")
 	}
 
@@ -364,7 +455,7 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 			}
 		}
 	case protocol.Login:
-		switch packet.(type) {
+		switch p := packet.(type) {
 		case *packets.PacketLoginOutDisconnect:
 			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
 				// See https://github.com/golang/go/issues/4373 for info.
@@ -374,6 +465,8 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 			}
 		case *packets.PacketLoginOutSuccess:
 			conn.SetState(protocol.Play)
+		case *packets.PacketLoginOutCompression:
+			conn.SetCompressionThreshold(int(p.Threshold))
 		}
 	case protocol.Play:
 		switch packet.(type) {
