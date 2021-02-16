@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
+	"github.com/r4g3baby/mcserver/pkg/util/eventbus"
 	"github.com/rs/zerolog/log"
 	"math"
 	"math/rand"
@@ -24,7 +25,8 @@ var (
 type Server struct {
 	config Config
 
-	players sync.Map
+	players  sync.Map
+	eventbus eventbus.EventBus
 
 	running  bool
 	shutdown func()
@@ -153,6 +155,18 @@ func (server *Server) ForEachPlayer(fn func(player *Player) bool) {
 	})
 }
 
+func (server *Server) FireEvent(event string, args ...interface{}) {
+	server.eventbus.Publish(event, args...)
+}
+
+func (server *Server) On(event string, fn interface{}) error {
+	return server.eventbus.Subscribe(event, fn)
+}
+
+func (server *Server) OnAsync(event string, fn interface{}) error {
+	return server.eventbus.SubscribeAsync(event, fn)
+}
+
 func (server *Server) handleClient(conn net.Conn) {
 	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client connected")
 
@@ -230,7 +244,8 @@ func (server *Server) removePlayer(uniqueID uuid.UUID) {
 
 func NewServer(config Config) *Server {
 	return &Server{
-		config:  config,
-		players: sync.Map{},
+		config:   config,
+		players:  sync.Map{},
+		eventbus: eventbus.New(),
 	}
 }
