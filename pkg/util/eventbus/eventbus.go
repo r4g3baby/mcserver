@@ -3,22 +3,35 @@ package eventbus
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 )
 
-// EventBus implements the publish–subscribe messaging pattern
-type EventBus interface {
-	// Publish publishes arguments to the given topic subscribers
-	Publish(topic string, args ...interface{})
-	// Subscribe subscribes to the given topic
-	Subscribe(topic string, fn interface{}) error
-	// SubscribeAsync subscribes to the given topic asynchronously
-	SubscribeAsync(topic string, fn interface{}) error
-	// Unsubscribe unsubscribe handler from the given topic
-	Unsubscribe(topic string, fn interface{}) error
-	// Close unsubscribe all handlers from given topic
-	Close(topic string) error
-}
+type (
+	// EventBus implements the publish–subscribe messaging pattern
+	EventBus interface {
+		// Publish publishes arguments to the given topic subscribers
+		Publish(topic string, args ...interface{})
+		// Subscribe subscribes to the given topic
+		Subscribe(topic string, fn interface{}, priority ...Priority) error
+		// SubscribeAsync subscribes to the given topic asynchronously
+		SubscribeAsync(topic string, fn interface{}, priority ...Priority) error
+		// Unsubscribe unsubscribes handler from the given topic
+		Unsubscribe(topic string, fn interface{}) error
+		// Close unsubscribes all handlers from given topic
+		Close(topic string) error
+	}
+	// Priority represents an event priority
+	Priority int
+)
+
+const (
+	Lowest  Priority = -200
+	Low     Priority = -100
+	Normal  Priority = 0
+	High    Priority = 100
+	Highest Priority = 200
+)
 
 type (
 	eventBus struct {
@@ -26,8 +39,9 @@ type (
 		handlers map[string][]handler
 	}
 	handler struct {
-		async bool
-		fn    reflect.Value
+		priority Priority
+		async    bool
+		fn       reflect.Value
 	}
 )
 
@@ -47,38 +61,51 @@ func (b *eventBus) Publish(topic string, args ...interface{}) {
 	}
 }
 
-func (b *eventBus) Subscribe(topic string, fn interface{}) error {
+func (b *eventBus) Subscribe(topic string, fn interface{}, priority ...Priority) error {
 	if err := isValidHandler(fn); err != nil {
 		return err
 	}
 
-	handler := handler{
-		async: false,
-		fn:    reflect.ValueOf(fn),
+	prio := Normal
+	if len(priority) > 0 {
+		prio = priority[0]
 	}
 
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
-	b.handlers[topic] = append(b.handlers[topic], handler)
+	b.subscribeHandler(topic, handler{
+		priority: prio,
+		async:    false,
+		fn:       reflect.ValueOf(fn),
+	})
 	return nil
 }
 
-func (b *eventBus) SubscribeAsync(topic string, fn interface{}) error {
+func (b *eventBus) SubscribeAsync(topic string, fn interface{}, priority ...Priority) error {
 	if err := isValidHandler(fn); err != nil {
 		return err
 	}
 
-	handler := handler{
-		async: true,
-		fn:    reflect.ValueOf(fn),
+	prio := Normal
+	if len(priority) > 0 {
+		prio = priority[0]
 	}
 
+	b.subscribeHandler(topic, handler{
+		priority: prio,
+		async:    true,
+		fn:       reflect.ValueOf(fn),
+	})
+	return nil
+}
+
+func (b *eventBus) subscribeHandler(topic string, handler handler) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	b.handlers[topic] = append(b.handlers[topic], handler)
-	return nil
+	handlers := append(b.handlers[topic], handler)
+	sort.SliceStable(handlers, func(i, j int) bool {
+		return handlers[i].priority < handlers[j].priority
+	})
+	b.handlers[topic] = handlers
 }
 
 func (b *eventBus) Unsubscribe(topic string, fn interface{}) error {
