@@ -32,7 +32,7 @@ type (
 		ForEachPlayer(fn func(player Player) bool)
 
 		FireEvent(event string, args ...interface{})
-		On(event string, fn interface{}) error
+		On(event string, fn interface{}, priority ...eventbus.Priority) error
 		OnAsync(event string, fn interface{}) error
 
 		createPlayer(conn Connection) (player Player, online bool)
@@ -176,8 +176,8 @@ func (server *server) FireEvent(event string, args ...interface{}) {
 	server.eventbus.Publish(event, args...)
 }
 
-func (server *server) On(event string, fn interface{}) error {
-	return server.eventbus.Subscribe(event, fn)
+func (server *server) On(event string, fn interface{}, priority ...eventbus.Priority) error {
+	return server.eventbus.Subscribe(event, fn, priority...)
 }
 
 func (server *server) OnAsync(event string, fn interface{}) error {
