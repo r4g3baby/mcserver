@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -22,17 +21,36 @@ var (
 	ErrServerStopped = errors.New("server already stopped")
 )
 
-type Server struct {
-	config Config
+type (
+	Server interface {
+		Start() error
+		Stop() error
 
-	players  sync.Map
-	eventbus eventbus.EventBus
+		GetPlayerCount() int
+		GetPlayers() []Player
+		GetPlayer(uniqueID uuid.UUID) Player
+		ForEachPlayer(fn func(player Player) bool)
 
-	running  bool
-	shutdown func()
-}
+		FireEvent(event string, args ...interface{})
+		On(event string, fn interface{}) error
+		OnAsync(event string, fn interface{}) error
 
-func (server *Server) Start() error {
+		createPlayer(conn Connection) (player Player, online bool)
+		removePlayer(uniqueID uuid.UUID)
+	}
+
+	server struct {
+		config Config
+
+		players  sync.Map
+		eventbus eventbus.EventBus
+
+		running  bool
+		shutdown func()
+	}
+)
+
+func (server *server) Start() error {
 	if server.running {
 		return ErrServerRunning
 	}
@@ -98,7 +116,7 @@ func (server *Server) Start() error {
 	return nil
 }
 
-func (server *Server) Stop() error {
+func (server *server) Stop() error {
 	if !server.running {
 		return ErrServerStopped
 	}
@@ -106,7 +124,7 @@ func (server *Server) Stop() error {
 	log.Info().Msg("stopping server")
 
 	server.shutdown()
-	server.ForEachPlayer(func(player *Player) bool {
+	server.ForEachPlayer(func(player Player) bool {
 		_ = player.Kick([]chat.Component{
 			&chat.TextComponent{
 				Text: "Server is shutting down",
@@ -123,7 +141,7 @@ func (server *Server) Stop() error {
 	return nil
 }
 
-func (server *Server) GetPlayerCount() int {
+func (server *server) GetPlayerCount() int {
 	var count int
 	server.players.Range(func(_, _ interface{}) bool {
 		count++
@@ -132,44 +150,66 @@ func (server *Server) GetPlayerCount() int {
 	return count
 }
 
-func (server *Server) GetPlayers() []*Player {
-	var players []*Player
+func (server *server) GetPlayers() []Player {
+	var players []Player
 	server.players.Range(func(_, value interface{}) bool {
-		players = append(players, value.(*Player))
+		players = append(players, value.(Player))
 		return true
 	})
 	return players
 }
 
-func (server *Server) GetPlayer(uniqueID uuid.UUID) *Player {
+func (server *server) GetPlayer(uniqueID uuid.UUID) Player {
 	if value, ok := server.players.Load(uniqueID); ok {
-		return value.(*Player)
+		return value.(Player)
 	}
 	return nil
 }
 
-func (server *Server) ForEachPlayer(fn func(player *Player) bool) {
+func (server *server) ForEachPlayer(fn func(player Player) bool) {
 	server.players.Range(func(_, value interface{}) bool {
-		return fn(value.(*Player))
+		return fn(value.(Player))
 	})
 }
 
-func (server *Server) FireEvent(event string, args ...interface{}) {
+func (server *server) FireEvent(event string, args ...interface{}) {
 	server.eventbus.Publish(event, args...)
 }
 
-func (server *Server) On(event string, fn interface{}) error {
+func (server *server) On(event string, fn interface{}) error {
 	return server.eventbus.Subscribe(event, fn)
 }
 
-func (server *Server) OnAsync(event string, fn interface{}) error {
+func (server *server) OnAsync(event string, fn interface{}) error {
 	return server.eventbus.SubscribeAsync(event, fn)
 }
 
-func (server *Server) handleClient(conn net.Conn) {
+func (server *server) createPlayer(conn Connection) (Player, bool) {
+	value, loaded := server.players.LoadOrStore(conn.GetUniqueID(), newPlayer(conn))
+	player := value.(Player)
+	if !loaded {
+		log.Info().
+			Str("name", player.GetUsername()).
+			Stringer("uuid", player.GetUniqueID()).
+			Msg("player joined the server")
+	}
+	return player, loaded
+}
+
+func (server *server) removePlayer(uniqueID uuid.UUID) {
+	if player, ok := server.players.LoadAndDelete(uniqueID); ok {
+		player := player.(Player)
+		log.Info().
+			Str("name", player.GetUsername()).
+			Stringer("uuid", player.GetUniqueID()).
+			Msg("player left the server")
+	}
+}
+
+func (server *server) handleClient(conn net.Conn) {
 	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client connected")
 
-	connection := NewConnection(conn, server)
+	connection := newConnection(conn, server)
 	for {
 		if err := connection.ReadPacket(); err != nil {
 			if !errors.Is(err, net.ErrClosed) {
@@ -190,9 +230,9 @@ func (server *Server) handleClient(conn net.Conn) {
 	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client disconnected")
 }
 
-func (server *Server) sendKeepAlive() {
+func (server *server) sendKeepAlive() {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	server.ForEachPlayer(func(player *Player) bool {
+	server.ForEachPlayer(func(player Player) bool {
 		if time.Since(player.GetLastKeepAliveTime()) >= 15*time.Second {
 			if !player.IsKeepAlivePending() {
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
@@ -217,30 +257,8 @@ func (server *Server) sendKeepAlive() {
 	})
 }
 
-func (server *Server) addPlayer(conn *Connection) (*Player, bool) {
-	value, loaded := server.players.LoadOrStore(conn.GetUniqueID(), newPlayer(conn))
-	player := value.(*Player)
-	if !loaded {
-		log.Info().
-			Str("name", player.GetUsername()).
-			Stringer("uuid", player.GetUniqueID()).
-			Msg("player joined the server")
-	}
-	return player, loaded
-}
-
-func (server *Server) removePlayer(uniqueID uuid.UUID) {
-	if player, ok := server.players.LoadAndDelete(uniqueID); ok {
-		player := player.(*Player)
-		log.Info().
-			Str("name", player.GetUsername()).
-			Stringer("uuid", player.GetUniqueID()).
-			Msg("player left the server")
-	}
-}
-
-func NewServer(config Config) *Server {
-	return &Server{
+func NewServer(config Config) Server {
+	return &server{
 		config:   config,
 		players:  sync.Map{},
 		eventbus: eventbus.New(),

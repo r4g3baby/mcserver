@@ -5,11 +5,11 @@ var (
 )
 
 type PlayerChatEvent struct {
-	player  *Player
+	player  Player
 	message string
 }
 
-func (e *PlayerChatEvent) GetPlayer() *Player {
+func (e *PlayerChatEvent) GetPlayer() Player {
 	return e.player
 }
 
@@ -21,6 +21,6 @@ func (e *PlayerChatEvent) GetMessage() string {
 	return e.message
 }
 
-func NewPlayerChatEvent(player *Player, message string) *PlayerChatEvent {
+func NewPlayerChatEvent(player Player, message string) *PlayerChatEvent {
 	return &PlayerChatEvent{player: player, message: message}
 }

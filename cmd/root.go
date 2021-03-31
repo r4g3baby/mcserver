@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"github.com/r4g3baby/mcserver/internal"
+	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/server"
+	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -33,7 +35,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		_ = serv.OnAsync(server.OnPlayerChatEvent, func(e *server.PlayerChatEvent) {
-			serv.ForEachPlayer(func(player *server.Player) bool {
+			serv.ForEachPlayer(func(player server.Player) bool {
 				_ = player.SendPacket(&packets.PacketPlayOutChatMessage{
 					Message: []chat.Component{
 						&chat.TranslatableComponent{

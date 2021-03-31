@@ -14,103 +14,131 @@ import (
 	"io"
 	"net"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 )
 
-type Connection struct {
-	net.Conn
+type (
+	Connection interface {
+		RemoteAddr() net.Addr
 
-	server *Server
+		GetServer() Server
+		SetUniqueID(uniqueID uuid.UUID)
+		GetUniqueID() uuid.UUID
+		SetUsername(username string)
+		GetUsername() string
+		SetProtocol(protocol protocol.Protocol)
+		GetProtocol() protocol.Protocol
+		SetState(state protocol.State)
+		GetState() protocol.State
+		SetCompressionThreshold(threshold int)
+		GetCompressionThreshold() int
+		UseCompression() bool
 
-	mutex                sync.RWMutex
-	uniqueID             uuid.UUID
-	username             string
-	protocol             protocol.Protocol
-	state                protocol.State
-	compressionThreshold int
-	compression          bool
+		Close() error
+		DelayedClose(delay time.Duration) error
+
+		ReadPacket() error
+		WritePacket(packet protocol.Packet) error
+	}
+
+	connection struct {
+		net.Conn
+
+		server Server
+
+		mutex                sync.RWMutex
+		uniqueID             uuid.UUID
+		username             string
+		protocol             protocol.Protocol
+		state                protocol.State
+		compressionThreshold int
+		compression          bool
+	}
+)
+
+func (conn *connection) GetServer() Server {
+	return conn.server
 }
 
-func (conn *Connection) SetUniqueID(uniqueID uuid.UUID) {
+func (conn *connection) SetUniqueID(uniqueID uuid.UUID) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.uniqueID = uniqueID
 }
 
-func (conn *Connection) GetUniqueID() uuid.UUID {
+func (conn *connection) GetUniqueID() uuid.UUID {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.uniqueID
 }
 
-func (conn *Connection) SetUsername(username string) {
+func (conn *connection) SetUsername(username string) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.username = username
 }
 
-func (conn *Connection) GetUsername() string {
+func (conn *connection) GetUsername() string {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.username
 }
 
-func (conn *Connection) SetProtocol(protocol protocol.Protocol) {
+func (conn *connection) SetProtocol(protocol protocol.Protocol) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.protocol = protocol
 }
 
-func (conn *Connection) GetProtocol() protocol.Protocol {
+func (conn *connection) GetProtocol() protocol.Protocol {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.protocol
 }
 
-func (conn *Connection) SetState(state protocol.State) {
+func (conn *connection) SetState(state protocol.State) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.state = state
 }
 
-func (conn *Connection) GetState() protocol.State {
+func (conn *connection) GetState() protocol.State {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.state
 }
 
-func (conn *Connection) SetCompressionThreshold(threshold int) {
+func (conn *connection) SetCompressionThreshold(threshold int) {
 	conn.mutex.Lock()
 	defer conn.mutex.Unlock()
 	conn.compressionThreshold = threshold
 	conn.compression = threshold >= 0
 }
 
-func (conn *Connection) GetCompressionThreshold() int {
+func (conn *connection) GetCompressionThreshold() int {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.compressionThreshold
 }
 
-func (conn *Connection) UseCompression() bool {
+func (conn *connection) UseCompression() bool {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.compression
 }
 
-func (conn *Connection) Close() error {
+func (conn *connection) Close() error {
 	conn.server.removePlayer(conn.GetUniqueID())
 	return conn.Conn.Close()
 }
 
-func (conn *Connection) DelayedClose(delay time.Duration) error {
+func (conn *connection) DelayedClose(delay time.Duration) error {
 	time.Sleep(delay)
 	return conn.Close()
 }
 
-func (conn *Connection) ReadPacket() error {
+func (conn *connection) ReadPacket() error {
 	length, err := conn.readLength()
 	if err != nil {
 		return err
@@ -184,7 +212,7 @@ func (conn *Connection) ReadPacket() error {
 	return conn.handlePacketRead(packet)
 }
 
-func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
+func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 	switch conn.GetState() {
 	case protocol.Handshaking:
 		switch p := packet.(type) {
@@ -243,7 +271,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 			conn.SetUsername(p.Username)
 			conn.SetUniqueID(util.NameUUIDFromBytes([]byte("OfflinePlayer:" + conn.GetUsername())))
 
-			player, online := conn.server.addPlayer(conn)
+			player, online := conn.server.createPlayer(conn)
 			if online {
 				return conn.WritePacket(&packets.PacketLoginOutDisconnect{
 					Reason: []chat.Component{
@@ -319,7 +347,7 @@ func (conn *Connection) handlePacketRead(packet protocol.Packet) error {
 	return nil
 }
 
-func (conn *Connection) WritePacket(packet protocol.Packet) error {
+func (conn *connection) WritePacket(packet protocol.Packet) error {
 	packetData := bytes.NewBuffer(nil)
 
 	packetID, err := packets.GetPacketID(conn.GetProtocol(), conn.GetState(), protocol.ClientBound, packet)
@@ -399,7 +427,7 @@ func (conn *Connection) WritePacket(packet protocol.Packet) error {
 	return conn.handlePostPacketWrite(packet)
 }
 
-func (conn *Connection) handlePrePacketWrite(packet protocol.Packet) error {
+func (conn *connection) handlePrePacketWrite(packet protocol.Packet) error {
 	switch conn.GetState() {
 	case protocol.Play:
 		switch p := packet.(type) {
@@ -414,7 +442,7 @@ func (conn *Connection) handlePrePacketWrite(packet protocol.Packet) error {
 	return nil
 }
 
-func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
+func (conn *connection) handlePostPacketWrite(packet protocol.Packet) error {
 	switch conn.GetState() {
 	case protocol.Status:
 		switch packet.(type) {
@@ -451,7 +479,7 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 	return nil
 }
 
-func (conn *Connection) readLength() (int32, error) {
+func (conn *connection) readLength() (int32, error) {
 	var result int32 = 0
 	for numRead := 0; ; numRead++ {
 		var read = make([]byte, 1)
@@ -472,8 +500,8 @@ func (conn *Connection) readLength() (int32, error) {
 	return result, nil
 }
 
-func NewConnection(conn net.Conn, server *Server) *Connection {
-	return &Connection{
+func newConnection(conn net.Conn, server Server) Connection {
+	return &connection{
 		Conn:     conn,
 		server:   server,
 		uniqueID: uuid.Nil,
