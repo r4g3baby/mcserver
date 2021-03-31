@@ -68,8 +68,7 @@ func (server *Server) Start() error {
 			default:
 				client, err := listener.Accept()
 				if err != nil {
-					// See https://github.com/golang/go/issues/4373 for info.
-					if !strings.Contains(err.Error(), "use of closed network connection") {
+					if !errors.Is(err, net.ErrClosed) {
 						log.Warn().Err(err).Msg("error occurred while accepting s new connection")
 					}
 					continue
@@ -173,8 +172,7 @@ func (server *Server) handleClient(conn net.Conn) {
 	connection := NewConnection(conn, server)
 	for {
 		if err := connection.ReadPacket(); err != nil {
-			// See https://github.com/golang/go/issues/4373 for info.
-			if !strings.Contains(err.Error(), "use of closed network connection") {
+			if !errors.Is(err, net.ErrClosed) {
 				log.Error().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error during packet read")
 				// todo: should we disconnect?
 			}
@@ -183,8 +181,7 @@ func (server *Server) handleClient(conn net.Conn) {
 	}
 
 	if err := connection.Close(); err != nil {
-		// See https://github.com/golang/go/issues/4373 for info.
-		if !strings.Contains(err.Error(), "use of closed network connection") {
+		if !errors.Is(err, net.ErrClosed) {
 			log.Warn().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error while closing connection")
 			return
 		}

@@ -420,8 +420,7 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 		switch packet.(type) {
 		case *packets.PacketStatusOutPong:
 			if err := conn.Close(); err != nil {
-				// See https://github.com/golang/go/issues/4373 for info.
-				if !strings.Contains(err.Error(), "use of closed network connection") {
+				if !errors.Is(err, net.ErrClosed) {
 					return err
 				}
 			}
@@ -430,8 +429,7 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 		switch p := packet.(type) {
 		case *packets.PacketLoginOutDisconnect:
 			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
-				// See https://github.com/golang/go/issues/4373 for info.
-				if !strings.Contains(err.Error(), "use of closed network connection") {
+				if !errors.Is(err, net.ErrClosed) {
 					return err
 				}
 			}
@@ -444,8 +442,7 @@ func (conn *Connection) handlePostPacketWrite(packet protocol.Packet) error {
 		switch packet.(type) {
 		case *packets.PacketPlayOutDisconnect:
 			if err := conn.DelayedClose(250 * time.Millisecond); err != nil {
-				// See https://github.com/golang/go/issues/4373 for info.
-				if !strings.Contains(err.Error(), "use of closed network connection") {
+				if !errors.Is(err, net.ErrClosed) {
 					return err
 				}
 			}
