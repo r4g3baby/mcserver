@@ -15,7 +15,7 @@ type (
 		// Subscribe subscribes to the given topic
 		Subscribe(topic string, fn interface{}, priority ...Priority) error
 		// SubscribeAsync subscribes to the given topic asynchronously
-		SubscribeAsync(topic string, fn interface{}, priority ...Priority) error
+		SubscribeAsync(topic string, fn interface{}) error
 		// Unsubscribe unsubscribes handler from the given topic
 		Unsubscribe(topic string, fn interface{}) error
 		// Close unsubscribes all handlers from given topic
@@ -79,18 +79,13 @@ func (b *eventBus) Subscribe(topic string, fn interface{}, priority ...Priority)
 	return nil
 }
 
-func (b *eventBus) SubscribeAsync(topic string, fn interface{}, priority ...Priority) error {
+func (b *eventBus) SubscribeAsync(topic string, fn interface{}) error {
 	if err := isValidHandler(fn); err != nil {
 		return err
 	}
 
-	prio := Normal
-	if len(priority) > 0 {
-		prio = priority[0]
-	}
-
 	b.subscribeHandler(topic, handler{
-		priority: prio,
+		priority: Normal,
 		async:    true,
 		fn:       reflect.ValueOf(fn),
 	})
