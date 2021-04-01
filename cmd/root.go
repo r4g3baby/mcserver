@@ -34,41 +34,43 @@ var rootCmd = &cobra.Command{
 			log.Fatal().Err(err).Msg("failed to start server")
 		}
 
-		_ = serv.OnAsync(server.OnPlayerChatEvent, func(e *server.PlayerChatEvent) {
-			serv.ForEachPlayer(func(player server.Player) bool {
-				_ = player.SendPacket(&packets.PacketPlayOutChatMessage{
-					Message: []chat.Component{
-						&chat.TranslatableComponent{
-							Translate: "chat.type.text",
-							With: []chat.Component{
-								&chat.TextComponent{
-									Text: player.GetUsername(),
-									BaseComponent: chat.BaseComponent{
-										ClickEvent: &chat.ClickEvent{
-											Action: chat.SuggestCommandClickAction,
-											Value:  "/tell " + player.GetUsername(),
+		_ = serv.OnAsync(server.OnPacketReadEvent, func(e server.PacketEvent) {
+			if chatPacket, ok := e.GetPacket().(*packets.PacketPlayInChatMessage); ok {
+				serv.ForEachPlayer(func(player server.Player) bool {
+					_ = player.SendPacket(&packets.PacketPlayOutChatMessage{
+						Message: []chat.Component{
+							&chat.TranslatableComponent{
+								Translate: "chat.type.text",
+								With: []chat.Component{
+									&chat.TextComponent{
+										Text: player.GetUsername(),
+										BaseComponent: chat.BaseComponent{
+											ClickEvent: &chat.ClickEvent{
+												Action: chat.SuggestCommandClickAction,
+												Value:  "/tell " + player.GetUsername(),
+											},
+											HoverEvent: &chat.HoverEvent{
+												Action: chat.ShowEntityHoverAction,
+												Contents: fmt.Sprintf(
+													"{id:%s,type:minecraft:player,name:%s}",
+													player.GetUniqueID(), player.GetUsername(),
+												),
+											},
+											Insertion: player.GetUsername(),
 										},
-										HoverEvent: &chat.HoverEvent{
-											Action: chat.ShowEntityHoverAction,
-											Contents: fmt.Sprintf(
-												"{id:%s,type:minecraft:player,name:%s}",
-												player.GetUniqueID(), player.GetUsername(),
-											),
-										},
-										Insertion: player.GetUsername(),
 									},
-								},
-								&chat.TextComponent{
-									Text: e.GetMessage(),
+									&chat.TextComponent{
+										Text: chatPacket.Message,
+									},
 								},
 							},
 						},
-					},
-					Position: 0,
-					Sender:   player.GetUniqueID(),
+						Position: 0,
+						Sender:   player.GetUniqueID(),
+					})
+					return true
 				})
-				return true
-			})
+			}
 		})
 
 		shutdownSignal := make(chan os.Signal, 1)

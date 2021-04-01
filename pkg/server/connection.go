@@ -209,6 +209,13 @@ func (conn *connection) ReadPacket() error {
 		return err
 	}
 
+	player := conn.server.GetPlayer(conn.GetUniqueID())
+	event := NewPacketEvent(conn, player, packet)
+	conn.server.FireEvent(OnPacketReadEvent, event)
+	if event.IsCancelled() {
+		return nil
+	}
+
 	return conn.handlePacketRead(packet)
 }
 
@@ -331,10 +338,6 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 		}
 	case protocol.Play:
 		switch p := packet.(type) {
-		case *packets.PacketPlayInChatMessage:
-			player := conn.server.GetPlayer(conn.GetUniqueID())
-			event := NewPlayerChatEvent(player, p.Message)
-			conn.server.FireEvent(OnPlayerChatEvent, event)
 		case *packets.PacketPlayInKeepAlive:
 			if player := conn.server.GetPlayer(conn.GetUniqueID()); player != nil {
 				if player.IsKeepAlivePending() && p.KeepAliveID == player.GetLastKeepAliveID() {
@@ -348,6 +351,13 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 }
 
 func (conn *connection) WritePacket(packet protocol.Packet) error {
+	player := conn.server.GetPlayer(conn.GetUniqueID())
+	event := NewPacketEvent(conn, player, packet)
+	conn.server.FireEvent(OnPacketWriteEvent, event)
+	if event.IsCancelled() {
+		return nil
+	}
+
 	packetData := bytes.NewBuffer(nil)
 
 	packetID, err := packets.GetPacketID(conn.GetProtocol(), conn.GetState(), protocol.ClientBound, packet)

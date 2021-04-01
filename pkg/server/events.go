@@ -1,26 +1,63 @@
 package server
 
-var (
-	OnPlayerChatEvent = "onPlayerChatEvent"
+import (
+	"github.com/r4g3baby/mcserver/pkg/protocol"
+	"sync"
 )
 
-type PlayerChatEvent struct {
-	player  Player
-	message string
+var (
+	OnPacketReadEvent  = "onPacketRead"
+	OnPacketWriteEvent = "onPacketWrite"
+)
+
+type (
+	PacketEvent interface {
+		GetConnection() Connection
+		GetPlayer() Player
+		GetPacket() protocol.Packet
+		SetCancelled(cancelled bool)
+		IsCancelled() bool
+	}
+
+	packetEvent struct {
+		connection Connection
+		player     Player
+		packet     protocol.Packet
+
+		mutex     sync.RWMutex
+		cancelled bool
+	}
+)
+
+func (e *packetEvent) GetConnection() Connection {
+	return e.connection
 }
 
-func (e *PlayerChatEvent) GetPlayer() Player {
+func (e *packetEvent) GetPlayer() Player {
 	return e.player
 }
 
-func (e *PlayerChatEvent) SetMessage(message string) {
-	e.message = message
+func (e *packetEvent) GetPacket() protocol.Packet {
+	return e.packet
 }
 
-func (e *PlayerChatEvent) GetMessage() string {
-	return e.message
+func (e *packetEvent) SetCancelled(cancelled bool) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	e.cancelled = cancelled
 }
 
-func NewPlayerChatEvent(player Player, message string) *PlayerChatEvent {
-	return &PlayerChatEvent{player: player, message: message}
+func (e *packetEvent) IsCancelled() bool {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+	return e.cancelled
+}
+
+func NewPacketEvent(connection Connection, player Player, packet protocol.Packet) PacketEvent {
+	return &packetEvent{
+		connection: connection,
+		player:     player,
+		packet:     packet,
+		cancelled:  false,
+	}
 }
