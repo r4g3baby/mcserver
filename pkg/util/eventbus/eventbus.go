@@ -21,7 +21,7 @@ type (
 		// Close unsubscribes all handlers from given topic
 		Close(topic string) error
 	}
-	// Priority represents an event priority
+	// Priority represents a handler priority
 	Priority int
 )
 
