@@ -139,9 +139,9 @@ func (s *Serializer) encodeTranslatable(obj map[string]interface{}, c *Translata
 	obj["translate"] = c.Translate
 
 	var with []map[string]interface{}
-	for _, w := range c.With {
+	for _, withObj := range c.With {
 		var comp = make(map[string]interface{})
-		if err := s.encode(comp, w); err != nil {
+		if err := s.encode(comp, withObj); err != nil {
 			return err
 		}
 		with = append(with, comp)
@@ -232,9 +232,9 @@ func (s *Serializer) encodeComponent(obj map[string]interface{}, c Component) er
 	}
 
 	var extra []map[string]interface{}
-	for _, e := range c.GetExtra() {
+	for _, extraObj := range c.GetExtra() {
 		var comp = make(map[string]interface{})
-		if err := s.encode(comp, e); err != nil {
+		if err := s.encode(comp, extraObj); err != nil {
 			return err
 		}
 		extra = append(extra, comp)
@@ -288,17 +288,17 @@ func (s *Serializer) decodeTranslatable(obj map[string]interface{}) (Component, 
 	}
 
 	var with []Component
-	if array, ok := obj["with"]; ok {
-		array, ok := array.([]map[string]interface{})
+	if withArray, ok := obj["with"]; ok {
+		withArray, ok := withArray.([]map[string]interface{})
 		if !ok {
 			return nil, errors.New("with key must be a array")
 		}
-		for _, obj := range array {
-			c, err := s.decode(obj)
+		for _, withObj := range withArray {
+			withObj, err := s.decode(withObj)
 			if err != nil {
 				return nil, err
 			}
-			with = append(with, c)
+			with = append(with, withObj)
 		}
 	}
 
@@ -319,38 +319,38 @@ func (s *Serializer) decodeKeybind(obj map[string]interface{}) (Component, error
 }
 
 func (s *Serializer) decodeScore(obj map[string]interface{}) (Component, error) {
-	score, ok := obj["score"].(map[string]interface{})
+	scoreObj, ok := obj["score"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("score key must be a object")
 	}
 
-	var test Score
-	if name, ok := score["name"]; ok {
+	var score Score
+	if name, ok := scoreObj["name"]; ok {
 		name, ok := name.(string)
 		if !ok {
 			return nil, errors.New("name key must be a string")
 		}
-		test.Name = name
+		score.Name = name
 	}
 
-	if objective, ok := score["objective"]; ok {
+	if objective, ok := scoreObj["objective"]; ok {
 		objective, ok := objective.(string)
 		if !ok {
 			return nil, errors.New("objective key must be a string")
 		}
-		test.Objective = objective
+		score.Objective = objective
 	}
 
-	if value, ok := score["value"]; ok {
+	if value, ok := scoreObj["value"]; ok {
 		value, ok := value.(string)
 		if !ok {
 			return nil, errors.New("value key must be a string")
 		}
-		test.Value = value
+		score.Value = value
 	}
 
 	return s.decodeComponent(obj, &ScoreComponent{
-		Score: test,
+		Score: score,
 	})
 }
 
@@ -405,20 +405,20 @@ func (s *Serializer) decodeComponent(obj map[string]interface{}, c Component) (C
 		c.SetObfuscated(obfuscated)
 	}
 
-	if color, ok := obj["color"]; ok {
-		value, ok := color.(string)
+	if colorStr, ok := obj["color"]; ok {
+		colorStr, ok := colorStr.(string)
 		if !ok {
 			return nil, errors.New("color key must be a string")
 		}
 
-		color := Color{}
-		if strings.HasPrefix(value, "#") {
-			color.Hex = strings.TrimPrefix(value, "#")
+		var color Color
+		if strings.HasPrefix(colorStr, "#") {
+			color.Hex = strings.TrimPrefix(colorStr, "#")
 			if s.ForceLegacyColors {
 				color = FindNearest(color)
 			}
 		} else {
-			color = FindByName(value)
+			color = FindByName(colorStr)
 		}
 
 		c.SetColor(&color)
@@ -432,76 +432,76 @@ func (s *Serializer) decodeComponent(obj map[string]interface{}, c Component) (C
 		c.SetInsertion(insertion)
 	}
 
-	if clickEvent, ok := obj["clickEvent"]; ok {
-		clickEvent, ok := clickEvent.(map[string]interface{})
+	if clickEventObj, ok := obj["clickEvent"]; ok {
+		clickEventObj, ok := clickEventObj.(map[string]interface{})
 		if !ok {
 			return nil, errors.New("clickEvent key must be a object")
 		}
 
-		event := &ClickEvent{}
-		if action, ok := clickEvent["action"]; ok {
+		var clickEvent ClickEvent
+		if action, ok := clickEventObj["action"]; ok {
 			action, ok := action.(string)
 			if !ok {
 				return nil, errors.New("clickEvent action key must be a string")
 			}
-			event.Action = ClickAction(action)
+			clickEvent.Action = ClickAction(action)
 		}
 
-		if value, ok := clickEvent["value"]; ok {
+		if value, ok := clickEventObj["value"]; ok {
 			value, ok := value.(string)
 			if !ok {
 				return nil, errors.New("clickEvent value key must be a string")
 			}
-			event.Value = value
+			clickEvent.Value = value
 		}
 
-		c.SetClickEvent(event)
+		c.SetClickEvent(&clickEvent)
 	}
 
-	if hoverEvent, ok := obj["hoverEvent"]; ok {
-		hoverEvent, ok := hoverEvent.(map[string]interface{})
+	if hoverEventObj, ok := obj["hoverEvent"]; ok {
+		hoverEventObj, ok := hoverEventObj.(map[string]interface{})
 		if !ok {
 			return nil, errors.New("hoverEvent key must be a object")
 		}
 
-		event := &HoverEvent{}
-		if action, ok := hoverEvent["action"]; ok {
+		var hoverEvent HoverEvent
+		if action, ok := hoverEventObj["action"]; ok {
 			action, ok := action.(string)
 			if !ok {
 				return nil, errors.New("hoverEvent action key must be a string")
 			}
-			event.Action = HoverAction(action)
+			hoverEvent.Action = HoverAction(action)
 		}
 
 		if s.LegacyHoverEvent {
-			if value, ok := hoverEvent["value"]; ok {
-				event.Contents = value
+			if value, ok := hoverEventObj["value"]; ok {
+				hoverEvent.Contents = value
 			}
 		} else {
-			if contents, ok := hoverEvent["contents"]; ok {
-				event.Contents = contents
+			if contents, ok := hoverEventObj["contents"]; ok {
+				hoverEvent.Contents = contents
 			}
 		}
 
-		c.SetHoverEvent(event)
+		c.SetHoverEvent(&hoverEvent)
 	}
 
-	if extra, ok := obj["extra"]; ok {
-		extra, ok := extra.([]map[string]interface{})
+	if extraArray, ok := obj["extra"]; ok {
+		extraArray, ok := extraArray.([]map[string]interface{})
 		if !ok {
 			return nil, errors.New("extra key must be a array")
 		}
 
-		var extras []Component
-		for _, obj := range extra {
-			c, err := s.decode(obj)
+		var extra []Component
+		for _, extraObj := range extraArray {
+			extraObj, err := s.decode(extraObj)
 			if err != nil {
 				return nil, err
 			}
-			extras = append(extras, c)
+			extra = append(extra, extraObj)
 		}
 
-		c.SetExtra(extras)
+		c.SetExtra(extra)
 	}
 
 	return c, nil
