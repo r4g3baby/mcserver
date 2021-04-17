@@ -1,9 +1,9 @@
 package nbt
 
 import (
-	"compress/gzip"
 	"encoding/binary"
 	"fmt"
+	"github.com/klauspost/compress/gzip"
 	"io"
 	"math"
 )
@@ -13,7 +13,9 @@ func ReadCompressed(reader io.Reader) (string, Tag, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	defer gzipReader.Close()
+	defer func(gzipReader *gzip.Reader) {
+		_ = gzipReader.Close()
+	}(gzipReader)
 	return Read(gzipReader)
 }
 
