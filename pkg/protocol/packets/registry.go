@@ -281,13 +281,18 @@ func GetPacketByID(proto protocol.Protocol, state protocol.State, direction prot
 }
 
 func RegisterPackets(proto protocol.Protocol, packetsMap map[protocol.State]map[protocol.Direction]map[reflect.Type]int32) error {
-	newPacketsMap := make(map[protocol.State]map[protocol.Direction]map[reflect.Type]int32)
-	for state, directions := range packets[protocol.Unknown] {
-		newPacketsMap[state] = make(map[protocol.Direction]map[reflect.Type]int32)
-		for direction, pTypes := range directions {
-			newPacketsMap[state][direction] = make(map[reflect.Type]int32)
-			for pType, pID := range pTypes {
-				newPacketsMap[state][direction][pType] = pID
+	var newPacketsMap map[protocol.State]map[protocol.Direction]map[reflect.Type]int32
+	if currentMap, ok := packets[proto]; ok {
+		newPacketsMap = currentMap
+	} else {
+		newPacketsMap = make(map[protocol.State]map[protocol.Direction]map[reflect.Type]int32)
+		for state, directions := range packets[protocol.Unknown] {
+			newPacketsMap[state] = make(map[protocol.Direction]map[reflect.Type]int32)
+			for direction, pTypes := range directions {
+				newPacketsMap[state][direction] = make(map[reflect.Type]int32)
+				for pType, pID := range pTypes {
+					newPacketsMap[state][direction][pType] = pID
+				}
 			}
 		}
 	}
