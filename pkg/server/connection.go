@@ -10,6 +10,7 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/util"
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
+	"github.com/r4g3baby/mcserver/pkg/util/nbt"
 	"github.com/rs/zerolog/log"
 	"io"
 	"net"
@@ -334,7 +335,25 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 				return err
 			}
 
-			return conn.WritePacket(&packets.PacketPlayOutPositionAndLook{})
+			if err := conn.WritePacket(&packets.PacketPlayOutPositionAndLook{}); err != nil {
+				return err
+			}
+
+			var biomes []int32
+			for i := 0; i < 1024; i++ {
+				biomes = append(biomes, 1)
+			}
+
+			return conn.WritePacket(&packets.PacketPlayOutChunkData{
+				ChunkX:        0,
+				ChunkZ:        0,
+				FullChunk:     true,
+				PrimaryBit:    0,
+				Heightmaps:    nbt.CompoundTag{},
+				Biomes:        biomes,
+				Data:          []byte{},
+				BlockEntities: []nbt.Tag{},
+			})
 		}
 	case protocol.Play:
 		switch p := packet.(type) {

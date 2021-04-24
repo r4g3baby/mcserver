@@ -229,6 +229,7 @@ func init() {
 				reflect.TypeOf((*PacketPlayOutChatMessage)(nil)).Elem():      0x0E,
 				reflect.TypeOf((*PacketPlayOutDisconnect)(nil)).Elem():       0x19,
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x1F,
+				reflect.TypeOf((*PacketPlayOutChunkData)(nil)).Elem():        0x20,
 				reflect.TypeOf((*PacketPlayOutJoinGame)(nil)).Elem():         0x24,
 				reflect.TypeOf((*PacketPlayOutPositionAndLook)(nil)).Elem():  0x34,
 			},
