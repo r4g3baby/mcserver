@@ -32,9 +32,11 @@ type (
 		GetProtocol() protocol.Protocol
 		SetState(state protocol.State)
 		GetState() protocol.State
-		SetCompressionThreshold(threshold int)
-		GetCompressionThreshold() int
 		UseCompression() bool
+		setCompressionThreshold(threshold int)
+		GetCompressionThreshold() int
+		getCompressionReader(buff *bytes.Buffer) (io.ReadCloser, error)
+		getCompressionWriter(buff *bytes.Buffer) *zlib.Writer
 
 		Close() error
 		DelayedClose(delay time.Duration) error
@@ -48,13 +50,18 @@ type (
 
 		server Server
 
-		mutex                sync.RWMutex
-		uniqueID             uuid.UUID
-		username             string
-		protocol             protocol.Protocol
-		state                protocol.State
-		compressionThreshold int
-		compression          bool
+		mutex       sync.RWMutex
+		uniqueID    uuid.UUID
+		username    string
+		protocol    protocol.Protocol
+		state       protocol.State
+		compression struct {
+			mutex     sync.RWMutex
+			enabled   bool
+			threshold int
+			writer    *zlib.Writer
+			reader    io.ReadCloser
+		}
 	}
 )
 
@@ -110,23 +117,56 @@ func (conn *connection) GetState() protocol.State {
 	return conn.state
 }
 
-func (conn *connection) SetCompressionThreshold(threshold int) {
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
-	conn.compressionThreshold = threshold
-	conn.compression = threshold >= 0
+func (conn *connection) UseCompression() bool {
+	conn.compression.mutex.RLock()
+	defer conn.compression.mutex.RUnlock()
+	return conn.compression.enabled
+}
+
+func (conn *connection) setCompressionThreshold(threshold int) {
+	conn.compression.mutex.Lock()
+	defer conn.compression.mutex.Unlock()
+	conn.compression.threshold = threshold
+	conn.compression.enabled = threshold >= 0
 }
 
 func (conn *connection) GetCompressionThreshold() int {
-	conn.mutex.RLock()
-	defer conn.mutex.RUnlock()
-	return conn.compressionThreshold
+	conn.compression.mutex.RLock()
+	defer conn.compression.mutex.RUnlock()
+	return conn.compression.threshold
 }
 
-func (conn *connection) UseCompression() bool {
-	conn.mutex.RLock()
-	defer conn.mutex.RUnlock()
-	return conn.compression
+func (conn *connection) getCompressionReader(buff *bytes.Buffer) (io.ReadCloser, error) {
+	conn.compression.mutex.Lock()
+	defer conn.compression.mutex.Unlock()
+
+	fmt.Println("getCompressionReader")
+	if conn.compression.reader == nil {
+		fmt.Println("getCompressionReader nil")
+		var err error
+		if conn.compression.reader, err = zlib.NewReader(buff); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := conn.compression.reader.(zlib.Resetter).Reset(buff, nil); err != nil {
+			return nil, err
+		}
+	}
+	return conn.compression.reader, nil
+}
+
+func (conn *connection) getCompressionWriter(buff *bytes.Buffer) *zlib.Writer {
+	conn.compression.mutex.Lock()
+	defer conn.compression.mutex.Unlock()
+
+	fmt.Println("getCompressionWriter")
+	if conn.compression.writer == nil {
+		fmt.Println("getCompressionWriter nil")
+		conn.compression.writer = zlib.NewWriter(buff)
+	} else {
+		conn.compression.writer.Reset(buff)
+	}
+	return conn.compression.writer
 }
 
 func (conn *connection) Close() error {
@@ -164,7 +204,7 @@ func (conn *connection) ReadPacket() error {
 		if dataLength > int32(conn.GetCompressionThreshold()) {
 			return errors.New("fat")
 		} else if dataLength > 0 {
-			zlibReader, err := zlib.NewReader(packetData)
+			zlibReader, err := conn.getCompressionReader(packetData)
 			if err != nil {
 				return err
 			}
@@ -402,11 +442,11 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 				return err
 			}
 
-			zlibWriter := zlib.NewWriter(data)
+			zlibWriter := conn.getCompressionWriter(data)
 			if _, err := packetData.WriteTo(zlibWriter); err != nil {
 				return err
 			}
-			if err := zlibWriter.Close(); err != nil {
+			if err := zlibWriter.Flush(); err != nil {
 				return err
 			}
 		} else {
@@ -493,7 +533,7 @@ func (conn *connection) handlePostPacketWrite(packet protocol.Packet) error {
 		case *packets.PacketLoginOutSuccess:
 			conn.SetState(protocol.Play)
 		case *packets.PacketLoginOutCompression:
-			conn.SetCompressionThreshold(int(p.Threshold))
+			conn.setCompressionThreshold(int(p.Threshold))
 		}
 	case protocol.Play:
 		switch packet.(type) {
