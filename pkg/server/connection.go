@@ -11,6 +11,7 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/nbt"
+	"github.com/r4g3baby/mcserver/pkg/util/pools"
 	"github.com/rs/zerolog/log"
 	"io"
 	"net"
@@ -35,6 +36,7 @@ type (
 		UseCompression() bool
 		setCompressionThreshold(threshold int)
 		GetCompressionThreshold() int
+		GetCompressionLevel() int
 
 		Close() error
 		DelayedClose(delay time.Duration) error
@@ -53,22 +55,14 @@ type (
 		username    string
 		protocol    protocol.Protocol
 		state       protocol.State
-		compression struct {
-			enabled   bool
-			threshold int
-		}
+		compression compression
 	}
-)
 
-var (
-	zlibReaders = sync.Pool{New: func() interface{} {
-		reader, _ := zlib.NewReader(nil)
-		return reader
-	}}
-
-	zlibWriters = sync.Pool{New: func() interface{} {
-		return zlib.NewWriter(nil)
-	}}
+	compression struct {
+		enabled   bool
+		threshold int
+		level     int
+	}
 )
 
 func (conn *connection) GetServer() Server {
@@ -142,6 +136,12 @@ func (conn *connection) GetCompressionThreshold() int {
 	return conn.compression.threshold
 }
 
+func (conn *connection) GetCompressionLevel() int {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.compression.level
+}
+
 func (conn *connection) Close() error {
 	conn.server.removePlayer(conn.GetUniqueID())
 	return conn.Conn.Close()
@@ -163,7 +163,7 @@ func (conn *connection) ReadPacket() error {
 	}
 
 	var payload = make([]byte, length)
-	if _, err = io.ReadFull(conn, payload); err != nil {
+	if _, err := io.ReadFull(conn, payload); err != nil {
 		return err
 	}
 
@@ -178,19 +178,16 @@ func (conn *connection) ReadPacket() error {
 			return errors.New("fat")
 		} else if dataLength > 0 {
 			var uncompressedData = make([]byte, length)
-			if err := func(zlibReader io.ReadCloser) error {
-				defer zlibReaders.Put(zlibReader)
-				if err = zlibReader.(zlib.Resetter).Reset(packetData, nil); err != nil {
+			if err := func(zlibReader io.ReadCloser, err error) error {
+				if err != nil {
 					return err
 				}
-				if _, err = io.ReadFull(zlibReader, uncompressedData); err != nil {
-					return err
-				}
-				if err = zlibReader.Close(); err != nil {
+				defer pools.Zlib.PutReader(zlibReader)
+				if _, err := io.ReadFull(zlibReader, uncompressedData); err != nil {
 					return err
 				}
 				return nil
-			}(zlibReaders.Get().(io.ReadCloser)); err != nil {
+			}(pools.Zlib.GetReader(packetData)); err != nil {
 				return err
 			}
 
@@ -224,7 +221,7 @@ func (conn *connection) ReadPacket() error {
 		e.Msg("received packet")
 	}
 
-	if err = packet.Read(conn.GetProtocol(), packetData); err != nil {
+	if err := packet.Read(conn.GetProtocol(), packetData); err != nil {
 		return err
 	}
 
@@ -420,17 +417,17 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 				return err
 			}
 
-			if err := func(zlibWriter *zlib.Writer) error {
-				defer zlibWriters.Put(zlibWriter)
-				zlibWriter.Reset(data)
+			level := conn.GetCompressionLevel()
+			if err := func(zlibWriter *zlib.Writer, err error) error {
+				if err != nil {
+					return err
+				}
+				defer pools.Zlib.PutWriter(zlibWriter, level)
 				if _, err := packetData.WriteTo(zlibWriter); err != nil {
 					return err
 				}
-				if err := zlibWriter.Close(); err != nil {
-					return err
-				}
 				return nil
-			}(zlibWriters.Get().(*zlib.Writer)); err != nil {
+			}(pools.Zlib.GetWriter(data, level)); err != nil {
 				return err
 			}
 		} else {
@@ -560,5 +557,8 @@ func newConnection(conn net.Conn, server Server) Connection {
 		uniqueID: uuid.Nil,
 		protocol: protocol.Unknown,
 		state:    protocol.Handshaking,
+		compression: compression{
+			level: zlib.DefaultCompression,
+		},
 	}
 }
