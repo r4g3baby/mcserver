@@ -35,8 +35,6 @@ type (
 		UseCompression() bool
 		setCompressionThreshold(threshold int)
 		GetCompressionThreshold() int
-		getCompressionReader(buff *bytes.Buffer) (io.ReadCloser, error)
-		getCompressionWriter(buff *bytes.Buffer) *zlib.Writer
 
 		Close() error
 		DelayedClose(delay time.Duration) error
@@ -56,13 +54,21 @@ type (
 		protocol    protocol.Protocol
 		state       protocol.State
 		compression struct {
-			mutex     sync.RWMutex
 			enabled   bool
 			threshold int
-			writer    *zlib.Writer
-			reader    io.ReadCloser
 		}
 	}
+)
+
+var (
+	zlibReaders = sync.Pool{New: func() interface{} {
+		reader, _ := zlib.NewReader(nil)
+		return reader
+	}}
+
+	zlibWriters = sync.Pool{New: func() interface{} {
+		return zlib.NewWriter(nil)
+	}}
 )
 
 func (conn *connection) GetServer() Server {
@@ -118,55 +124,22 @@ func (conn *connection) GetState() protocol.State {
 }
 
 func (conn *connection) UseCompression() bool {
-	conn.compression.mutex.RLock()
-	defer conn.compression.mutex.RUnlock()
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
 	return conn.compression.enabled
 }
 
 func (conn *connection) setCompressionThreshold(threshold int) {
-	conn.compression.mutex.Lock()
-	defer conn.compression.mutex.Unlock()
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
 	conn.compression.threshold = threshold
 	conn.compression.enabled = threshold >= 0
 }
 
 func (conn *connection) GetCompressionThreshold() int {
-	conn.compression.mutex.RLock()
-	defer conn.compression.mutex.RUnlock()
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
 	return conn.compression.threshold
-}
-
-func (conn *connection) getCompressionReader(buff *bytes.Buffer) (io.ReadCloser, error) {
-	conn.compression.mutex.Lock()
-	defer conn.compression.mutex.Unlock()
-
-	fmt.Println("getCompressionReader")
-	if conn.compression.reader == nil {
-		fmt.Println("getCompressionReader nil")
-		var err error
-		if conn.compression.reader, err = zlib.NewReader(buff); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := conn.compression.reader.(zlib.Resetter).Reset(buff, nil); err != nil {
-			return nil, err
-		}
-	}
-	return conn.compression.reader, nil
-}
-
-func (conn *connection) getCompressionWriter(buff *bytes.Buffer) *zlib.Writer {
-	conn.compression.mutex.Lock()
-	defer conn.compression.mutex.Unlock()
-
-	fmt.Println("getCompressionWriter")
-	if conn.compression.writer == nil {
-		fmt.Println("getCompressionWriter nil")
-		conn.compression.writer = zlib.NewWriter(buff)
-	} else {
-		conn.compression.writer.Reset(buff)
-	}
-	return conn.compression.writer
 }
 
 func (conn *connection) Close() error {
@@ -204,15 +177,20 @@ func (conn *connection) ReadPacket() error {
 		if dataLength > int32(conn.GetCompressionThreshold()) {
 			return errors.New("fat")
 		} else if dataLength > 0 {
-			zlibReader, err := conn.getCompressionReader(packetData)
-			if err != nil {
-				return err
-			}
 			var uncompressedData = make([]byte, length)
-			if _, err = io.ReadFull(zlibReader, uncompressedData); err != nil {
-				return err
-			}
-			if err := zlibReader.Close(); err != nil {
+			if err := func(zlibReader io.ReadCloser) error {
+				defer zlibReaders.Put(zlibReader)
+				if err = zlibReader.(zlib.Resetter).Reset(packetData, nil); err != nil {
+					return err
+				}
+				if _, err = io.ReadFull(zlibReader, uncompressedData); err != nil {
+					return err
+				}
+				if err = zlibReader.Close(); err != nil {
+					return err
+				}
+				return nil
+			}(zlibReaders.Get().(io.ReadCloser)); err != nil {
 				return err
 			}
 
@@ -442,11 +420,17 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 				return err
 			}
 
-			zlibWriter := conn.getCompressionWriter(data)
-			if _, err := packetData.WriteTo(zlibWriter); err != nil {
-				return err
-			}
-			if err := zlibWriter.Flush(); err != nil {
+			if err := func(zlibWriter *zlib.Writer) error {
+				defer zlibWriters.Put(zlibWriter)
+				zlibWriter.Reset(data)
+				if _, err := packetData.WriteTo(zlibWriter); err != nil {
+					return err
+				}
+				if err := zlibWriter.Close(); err != nil {
+					return err
+				}
+				return nil
+			}(zlibWriters.Get().(*zlib.Writer)); err != nil {
 				return err
 			}
 		} else {
