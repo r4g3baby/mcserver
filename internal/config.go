@@ -34,4 +34,6 @@ func init() {
 	viper.SetDefault("logger.compress", true)
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 25565)
+	viper.SetDefault("server.compression.threshold", 256)
+	viper.SetDefault("server.compression.level", -1)
 }

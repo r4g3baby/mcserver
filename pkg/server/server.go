@@ -26,6 +26,8 @@ type (
 		Start() error
 		Stop() error
 
+		GetConfig() Config
+
 		GetPlayerCount() int
 		GetPlayers() []Player
 		GetPlayer(uniqueID uuid.UUID) Player
@@ -139,6 +141,10 @@ func (server *server) Stop() error {
 	server.running = false
 
 	return nil
+}
+
+func (server *server) GetConfig() Config {
+	return server.config
 }
 
 func (server *server) GetPlayerCount() int {

@@ -36,6 +36,7 @@ type (
 		UseCompression() bool
 		setCompressionThreshold(threshold int)
 		GetCompressionThreshold() int
+		SetCompressionLevel(level int)
 		GetCompressionLevel() int
 
 		Close() error
@@ -134,6 +135,12 @@ func (conn *connection) GetCompressionThreshold() int {
 	conn.mutex.RLock()
 	defer conn.mutex.RUnlock()
 	return conn.compression.threshold
+}
+
+func (conn *connection) SetCompressionLevel(level int) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.compression.level = level
 }
 
 func (conn *connection) GetCompressionLevel() int {
@@ -309,7 +316,7 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 			}
 
 			if err := conn.WritePacket(&packets.PacketLoginOutCompression{
-				Threshold: 256,
+				Threshold: int32(conn.server.GetConfig().Compression.Threshold),
 			}); err != nil {
 				return err
 			}
@@ -558,7 +565,7 @@ func newConnection(conn net.Conn, server Server) Connection {
 		protocol: protocol.Unknown,
 		state:    protocol.Handshaking,
 		compression: compression{
-			level: zlib.DefaultCompression,
+			level: server.GetConfig().Compression.Level,
 		},
 	}
 }
