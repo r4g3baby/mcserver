@@ -15,6 +15,7 @@ type (
 		GetServer() Server
 		GetUniqueID() uuid.UUID
 		GetUsername() string
+		GetProtocol() protocol.Protocol
 		GetState() protocol.State
 		setLatency(latency time.Duration)
 		GetLatency() time.Duration
