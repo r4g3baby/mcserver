@@ -60,6 +60,7 @@ type (
 	}
 
 	compression struct {
+		mutex     sync.RWMutex
 		enabled   bool
 		threshold int
 		level     int
@@ -119,33 +120,33 @@ func (conn *connection) GetState() protocol.State {
 }
 
 func (conn *connection) UseCompression() bool {
-	conn.mutex.RLock()
-	defer conn.mutex.RUnlock()
+	conn.compression.mutex.RLock()
+	defer conn.compression.mutex.RUnlock()
 	return conn.compression.enabled
 }
 
 func (conn *connection) setCompressionThreshold(threshold int) {
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
+	conn.compression.mutex.Lock()
+	defer conn.compression.mutex.Unlock()
 	conn.compression.threshold = threshold
 	conn.compression.enabled = threshold >= 0
 }
 
 func (conn *connection) GetCompressionThreshold() int {
-	conn.mutex.RLock()
-	defer conn.mutex.RUnlock()
+	conn.compression.mutex.RLock()
+	defer conn.compression.mutex.RUnlock()
 	return conn.compression.threshold
 }
 
 func (conn *connection) SetCompressionLevel(level int) {
-	conn.mutex.Lock()
-	defer conn.mutex.Unlock()
+	conn.compression.mutex.Lock()
+	defer conn.compression.mutex.Unlock()
 	conn.compression.level = level
 }
 
 func (conn *connection) GetCompressionLevel() int {
-	conn.mutex.RLock()
-	defer conn.mutex.RUnlock()
+	conn.compression.mutex.RLock()
+	defer conn.compression.mutex.RUnlock()
 	return conn.compression.level
 }
 
