@@ -39,7 +39,7 @@ type (
 )
 
 func (packet *PacketStatusOutResponse) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Status, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Status, protocol.ClientBound, packet)
 }
 
 func (packet *PacketStatusOutResponse) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

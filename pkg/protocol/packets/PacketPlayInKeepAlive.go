@@ -10,7 +10,7 @@ type PacketPlayInKeepAlive struct {
 }
 
 func (packet *PacketPlayInKeepAlive) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Play, protocol.ServerBound, packet)
+	return GetID(proto, protocol.Play, protocol.ServerBound, packet)
 }
 
 func (packet *PacketPlayInKeepAlive) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {

@@ -11,7 +11,7 @@ type PacketLoginOutDisconnect struct {
 }
 
 func (packet *PacketLoginOutDisconnect) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Login, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Login, protocol.ClientBound, packet)
 }
 
 func (packet *PacketLoginOutDisconnect) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

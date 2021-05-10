@@ -207,7 +207,7 @@ func (conn *connection) ReadPacket() error {
 		return err
 	}
 
-	packet, err := packets.GetPacketByID(conn.GetProtocol(), conn.GetState(), protocol.ServerBound, packetID)
+	packet, err := packets.Get(conn.GetProtocol(), conn.GetState(), protocol.ServerBound, packetID)
 	if err != nil {
 		if e := log.Debug(); e.Enabled() {
 			e.Str("id", fmt.Sprintf("%#0X", packetID))
@@ -401,7 +401,7 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 
 	packetData := bytes.NewBuffer(nil)
 
-	packetID, err := packets.GetPacketID(conn.GetProtocol(), conn.GetState(), protocol.ClientBound, packet)
+	packetID, err := packets.GetID(conn.GetProtocol(), conn.GetState(), protocol.ClientBound, packet)
 	if err != nil {
 		return err
 	}

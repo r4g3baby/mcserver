@@ -12,7 +12,7 @@ type PacketLoginOutSuccess struct {
 }
 
 func (packet *PacketLoginOutSuccess) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Login, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Login, protocol.ClientBound, packet)
 }
 
 func (packet *PacketLoginOutSuccess) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {

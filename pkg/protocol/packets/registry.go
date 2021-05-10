@@ -70,7 +70,7 @@ var (
 )
 
 func init() {
-	if err := RegisterPackets(protocol.V1_8, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_8, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutKeepAlive)(nil)).Elem():        0x00,
@@ -89,7 +89,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_9, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_9, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -108,7 +108,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_12, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_12, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -127,7 +127,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_12_1, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_12_1, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -146,7 +146,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_13, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_13, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -165,7 +165,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_14, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_14, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -184,7 +184,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_15, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_15, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0E,
@@ -203,7 +203,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_16, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_16, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -222,7 +222,7 @@ func init() {
 		panic(err)
 	}
 
-	if err := RegisterPackets(protocol.V1_16_2, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
+	if err := Register(protocol.V1_16_2, map[protocol.State]map[protocol.Direction]map[reflect.Type]int32{
 		protocol.Play: {
 			protocol.ClientBound: {
 				reflect.TypeOf((*PacketPlayOutServerDifficulty)(nil)).Elem(): 0x0D,
@@ -242,16 +242,16 @@ func init() {
 		panic(err)
 	}
 
-	copyPackets(protocol.V1_9, protocol.V1_9_1, protocol.V1_9_2, protocol.V1_9_3, protocol.V1_10, protocol.V1_11, protocol.V1_11_1)
-	copyPackets(protocol.V1_12_1, protocol.V1_12_2)
-	copyPackets(protocol.V1_13, protocol.V1_13_1, protocol.V1_13_2)
-	copyPackets(protocol.V1_14, protocol.V1_14_1, protocol.V1_14_2, protocol.V1_14_3, protocol.V1_14_4)
-	copyPackets(protocol.V1_15, protocol.V1_15_1, protocol.V1_15_2)
-	copyPackets(protocol.V1_16, protocol.V1_16_1)
-	copyPackets(protocol.V1_16_2, protocol.V1_16_3, protocol.V1_16_4)
+	Copy(protocol.V1_9, protocol.V1_9_1, protocol.V1_9_2, protocol.V1_9_3, protocol.V1_10, protocol.V1_11, protocol.V1_11_1)
+	Copy(protocol.V1_12_1, protocol.V1_12_2)
+	Copy(protocol.V1_13, protocol.V1_13_1, protocol.V1_13_2)
+	Copy(protocol.V1_14, protocol.V1_14_1, protocol.V1_14_2, protocol.V1_14_3, protocol.V1_14_4)
+	Copy(protocol.V1_15, protocol.V1_15_1, protocol.V1_15_2)
+	Copy(protocol.V1_16, protocol.V1_16_1)
+	Copy(protocol.V1_16_2, protocol.V1_16_3, protocol.V1_16_4)
 }
 
-func GetPacketID(proto protocol.Protocol, state protocol.State, direction protocol.Direction, packet protocol.Packet) (int32, error) {
+func GetID(proto protocol.Protocol, state protocol.State, direction protocol.Direction, packet protocol.Packet) (int32, error) {
 	if states, ok := packets[proto]; ok {
 		if directions, ok := states[state]; ok {
 			if pTypes, ok := directions[direction]; ok {
@@ -261,12 +261,12 @@ func GetPacketID(proto protocol.Protocol, state protocol.State, direction protoc
 			}
 		}
 	} else {
-		return GetPacketID(protocol.Unknown, state, direction, packet)
+		return GetID(protocol.Unknown, state, direction, packet)
 	}
 	return 0, errors.New("no packet id found for the given options")
 }
 
-func GetPacketByID(proto protocol.Protocol, state protocol.State, direction protocol.Direction, id int32) (protocol.Packet, error) {
+func Get(proto protocol.Protocol, state protocol.State, direction protocol.Direction, id int32) (protocol.Packet, error) {
 	if states, ok := packetsByID[proto]; ok {
 		if directions, ok := states[state]; ok {
 			if pIDs, ok := directions[direction]; ok {
@@ -276,12 +276,12 @@ func GetPacketByID(proto protocol.Protocol, state protocol.State, direction prot
 			}
 		}
 	} else {
-		return GetPacketByID(protocol.Unknown, state, direction, id)
+		return Get(protocol.Unknown, state, direction, id)
 	}
 	return nil, fmt.Errorf("no packet found with id %d", id)
 }
 
-func RegisterPackets(proto protocol.Protocol, packetsMap map[protocol.State]map[protocol.Direction]map[reflect.Type]int32) error {
+func Register(proto protocol.Protocol, packetsMap map[protocol.State]map[protocol.Direction]map[reflect.Type]int32) error {
 	var newPacketsMap map[protocol.State]map[protocol.Direction]map[reflect.Type]int32
 	if currentMap, ok := packets[proto]; ok {
 		newPacketsMap = currentMap
@@ -318,7 +318,7 @@ func RegisterPackets(proto protocol.Protocol, packetsMap map[protocol.State]map[
 	return nil
 }
 
-func copyPackets(src protocol.Protocol, destinations ...protocol.Protocol) {
+func Copy(src protocol.Protocol, destinations ...protocol.Protocol) {
 	for _, dst := range destinations {
 		packets[dst] = packets[src]
 		packetsByID[dst] = packetsByID[src]

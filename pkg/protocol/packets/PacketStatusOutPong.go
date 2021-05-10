@@ -10,7 +10,7 @@ type PacketStatusOutPong struct {
 }
 
 func (packet *PacketStatusOutPong) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Status, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Status, protocol.ClientBound, packet)
 }
 
 func (packet *PacketStatusOutPong) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

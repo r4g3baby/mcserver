@@ -13,7 +13,7 @@ type PacketHandshakingStart struct {
 }
 
 func (packet *PacketHandshakingStart) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Handshaking, protocol.ServerBound, packet)
+	return GetID(proto, protocol.Handshaking, protocol.ServerBound, packet)
 }
 
 func (packet *PacketHandshakingStart) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

@@ -30,7 +30,7 @@ type (
 )
 
 func (packet *PacketPlayOutJoinGame) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
 func (packet *PacketPlayOutJoinGame) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {

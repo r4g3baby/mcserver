@@ -11,7 +11,7 @@ type PacketPlayOutDisconnect struct {
 }
 
 func (packet *PacketPlayOutDisconnect) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
 func (packet *PacketPlayOutDisconnect) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

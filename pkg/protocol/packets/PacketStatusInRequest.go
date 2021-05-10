@@ -8,7 +8,7 @@ import (
 type PacketStatusInRequest struct{}
 
 func (packet *PacketStatusInRequest) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Status, protocol.ServerBound, packet)
+	return GetID(proto, protocol.Status, protocol.ServerBound, packet)
 }
 
 func (packet *PacketStatusInRequest) Read(_ protocol.Protocol, _ *bytes.Buffer) error {

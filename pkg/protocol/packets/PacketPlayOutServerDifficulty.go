@@ -11,7 +11,7 @@ type PacketPlayOutServerDifficulty struct {
 }
 
 func (packet *PacketPlayOutServerDifficulty) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
 func (packet *PacketPlayOutServerDifficulty) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {

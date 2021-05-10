@@ -10,7 +10,7 @@ type PacketLoginInStart struct {
 }
 
 func (packet *PacketLoginInStart) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Login, protocol.ServerBound, packet)
+	return GetID(proto, protocol.Login, protocol.ServerBound, packet)
 }
 
 func (packet *PacketLoginInStart) Read(_ protocol.Protocol, buffer *bytes.Buffer) error {

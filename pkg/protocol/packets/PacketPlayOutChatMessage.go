@@ -14,7 +14,7 @@ type PacketPlayOutChatMessage struct {
 }
 
 func (packet *PacketPlayOutChatMessage) GetID(proto protocol.Protocol) (int32, error) {
-	return GetPacketID(proto, protocol.Play, protocol.ClientBound, packet)
+	return GetID(proto, protocol.Play, protocol.ClientBound, packet)
 }
 
 func (packet *PacketPlayOutChatMessage) Read(proto protocol.Protocol, buffer *bytes.Buffer) error {
