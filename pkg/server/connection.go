@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/klauspost/compress/zlib"
+	"github.com/r4g3baby/mcserver/pkg/log"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util"
@@ -12,7 +13,6 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/nbt"
 	"github.com/r4g3baby/mcserver/pkg/util/pools"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net"
 	"reflect"
@@ -210,23 +210,25 @@ func (conn *connection) ReadPacket() error {
 
 	packet, err := packets.Get(conn.GetProtocol(), conn.GetState(), protocol.ServerBound, packetID)
 	if err != nil {
-		if e := log.Debug(); e.Enabled() {
-			e.Str("id", fmt.Sprintf("%#0X", packetID))
-			e.Stringer("state", conn.GetState())
-			e.Int32("protocol", int32(conn.GetProtocol()))
-			e.Bool("compression", conn.UseCompression())
-			e.Msg("received unknown packet")
+		if debugLog := log.Log.V(1); debugLog.Enabled() {
+			debugLog.WithValues(
+				"id", fmt.Sprintf("%#0X", packetID),
+				"state", conn.GetState(),
+				"protocol", int32(conn.GetProtocol()),
+				"compression", conn.UseCompression(),
+			).V(1).Info("received unknown packet")
 		}
 		return nil
 	}
 
-	if e := log.Debug(); e.Enabled() {
-		e.Str("id", fmt.Sprintf("%#0X", packetID))
-		e.Stringer("type", reflect.TypeOf(packet))
-		e.Stringer("state", conn.GetState())
-		e.Int32("protocol", int32(conn.GetProtocol()))
-		e.Bool("compression", conn.UseCompression())
-		e.Msg("received packet")
+	if debugLog := log.Log.V(1); debugLog.Enabled() {
+		debugLog.WithValues(
+			"id", fmt.Sprintf("%#0X", packetID),
+			"type", reflect.TypeOf(packet),
+			"state", conn.GetState(),
+			"protocol", int32(conn.GetProtocol()),
+			"compression", conn.UseCompression(),
+		).V(1).Info("received packet")
 	}
 
 	if err := packet.Read(conn.GetProtocol(), packetData); err != nil {
@@ -473,13 +475,14 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 		return err
 	}
 
-	if e := log.Debug(); e.Enabled() {
-		e.Str("id", fmt.Sprintf("%#0X", packetID))
-		e.Stringer("type", reflect.TypeOf(packet))
-		e.Stringer("state", conn.GetState())
-		e.Int32("protocol", int32(conn.GetProtocol()))
-		e.Bool("compression", conn.UseCompression())
-		e.Msg("sent packet")
+	if debugLog := log.Log.V(1); debugLog.Enabled() {
+		debugLog.WithValues(
+			"id", fmt.Sprintf("%#0X", packetID),
+			"type", reflect.TypeOf(packet),
+			"state", conn.GetState(),
+			"protocol", int32(conn.GetProtocol()),
+			"compression", conn.UseCompression(),
+		).V(1).Info("sent packet")
 	}
 
 	return conn.handlePostPacketWrite(packet)

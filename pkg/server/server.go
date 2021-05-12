@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/r4g3baby/mcserver/pkg/log"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/eventbus"
-	"github.com/rs/zerolog/log"
 	"math"
 	"math/rand"
 	"net"
@@ -65,14 +65,16 @@ func (server *server) Start() error {
 		return err
 	}
 
-	log.Info().Stringer("addr", listener.Addr()).Msg("server listening for new connections")
+	log.Log.WithValues(
+		"addr", listener.Addr(),
+	).Info("server listening for new connections")
 
 	var wait sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 	server.shutdown = func() {
 		cancel()
 		if err := listener.Close(); err != nil {
-			log.Error().Err(err).Msg("got error while closing listener")
+			log.Log.Error(err, "got error while closing listener")
 		}
 		wait.Wait()
 	}
@@ -89,7 +91,7 @@ func (server *server) Start() error {
 				client, err := listener.Accept()
 				if err != nil {
 					if !errors.Is(err, net.ErrClosed) {
-						log.Warn().Err(err).Msg("error occurred while accepting s new connection")
+						log.Log.Error(err, "error occurred while accepting a new connection")
 					}
 					continue
 				}
@@ -123,7 +125,7 @@ func (server *server) Stop() error {
 		return ErrServerStopped
 	}
 
-	log.Info().Msg("stopping server")
+	log.Log.Info("stopping server")
 
 	server.shutdown()
 	server.ForEachPlayer(func(player Player) bool {
@@ -194,10 +196,10 @@ func (server *server) createPlayer(conn Connection) (Player, bool) {
 	value, loaded := server.players.LoadOrStore(conn.GetUniqueID(), newPlayer(conn))
 	player := value.(Player)
 	if !loaded {
-		log.Info().
-			Str("name", player.GetUsername()).
-			Stringer("uuid", player.GetUniqueID()).
-			Msg("player joined the server")
+		log.Log.WithValues(
+			"name", player.GetUsername(),
+			"uuid", player.GetUniqueID(),
+		).Info("player joined the server")
 	}
 	return player, loaded
 }
@@ -205,21 +207,25 @@ func (server *server) createPlayer(conn Connection) (Player, bool) {
 func (server *server) removePlayer(uniqueID uuid.UUID) {
 	if player, ok := server.players.LoadAndDelete(uniqueID); ok {
 		player := player.(Player)
-		log.Info().
-			Str("name", player.GetUsername()).
-			Stringer("uuid", player.GetUniqueID()).
-			Msg("player left the server")
+		log.Log.WithValues(
+			"name", player.GetUsername(),
+			"uuid", player.GetUniqueID(),
+		).Info("player left the server")
 	}
 }
 
 func (server *server) handleClient(conn net.Conn) {
-	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client connected")
+	log.Log.WithValues(
+		"connection", conn.RemoteAddr(),
+	).V(1).Info("client connected")
 
 	connection := newConnection(conn, server)
 	for {
 		if err := connection.ReadPacket(); err != nil {
 			if !errors.Is(err, net.ErrClosed) {
-				log.Error().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error during packet read")
+				log.Log.WithValues(
+					"connection", conn.RemoteAddr(),
+				).Error(err, "got error during packet read")
 				// todo: should we disconnect?
 			}
 			break
@@ -228,12 +234,16 @@ func (server *server) handleClient(conn net.Conn) {
 
 	if err := connection.Close(); err != nil {
 		if !errors.Is(err, net.ErrClosed) {
-			log.Warn().Err(err).Stringer("connection", connection.RemoteAddr()).Msg("got error while closing connection")
+			log.Log.WithValues(
+				"connection", conn.RemoteAddr(),
+			).Error(err, "got error while closing connection")
 			return
 		}
 	}
 
-	log.Debug().Stringer("connection", conn.RemoteAddr()).Msg("client disconnected")
+	log.Log.WithValues(
+		"connection", conn.RemoteAddr(),
+	).V(1).Info("client disconnected")
 }
 
 func (server *server) sendKeepAlive() {
@@ -244,7 +254,10 @@ func (server *server) sendKeepAlive() {
 				if err := player.SendPacket(&packets.PacketPlayOutKeepAlive{
 					KeepAliveID: random.Int31n(math.MaxInt32),
 				}); err != nil {
-					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to send keep alive packet")
+					log.Log.WithValues(
+						"name", player.GetUsername(),
+						"uuid", player.GetUniqueID(),
+					).Error(err, "failed to send keep alive packet")
 				}
 			} else {
 				if err := player.Kick([]chat.Component{
@@ -255,7 +268,10 @@ func (server *server) sendKeepAlive() {
 						},
 					},
 				}); err != nil {
-					log.Warn().Err(err).Str("player", player.GetUsername()).Msg("failed to kick player")
+					log.Log.WithValues(
+						"name", player.GetUsername(),
+						"uuid", player.GetUniqueID(),
+					).Error(err, "failed to kick player")
 				}
 			}
 		}

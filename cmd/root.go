@@ -2,15 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/go-logr/zapr"
 	"github.com/r4g3baby/mcserver/internal"
+	"github.com/r4g3baby/mcserver/pkg/log"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/server"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/natefinch/lumberjack.v2"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,7 +32,8 @@ var rootCmd = &cobra.Command{
 
 		serv := server.NewServer(config.Server)
 		if err := serv.Start(); err != nil {
-			log.Fatal().Err(err).Msg("failed to start server")
+			log.Log.Error(err, "failed to start server")
+			os.Exit(1)
 		}
 
 		_ = serv.OnAsync(server.OnPacketReadEvent, func(e server.PacketEvent) {
@@ -77,9 +79,10 @@ var rootCmd = &cobra.Command{
 		signal.Notify(shutdownSignal, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, os.Interrupt)
 		sig := <-shutdownSignal
 
-		log.Debug().Str("signal", sig.String()).Msg("received shutdown signal")
+		log.Log.V(1).Info("received shutdown signal", "signal", sig)
 		if err := serv.Stop(); err != nil {
-			log.Fatal().Err(err).Msg("failed to stop server")
+			log.Log.Error(err, "failed to stop server")
+			os.Exit(1)
 		}
 	},
 }
@@ -94,31 +97,6 @@ func init() {
 	_ = viper.BindPFlag("server.port", rootCmd.Flags().Lookup("port"))
 }
 
-func setupLogger(config internal.Config) {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if config.Debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-
-	consoleLogger := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "02 Jan 15:04"}
-	if config.Logger.Enabled {
-		fileLogger := consoleLogger
-		fileLogger.Out = &lumberjack.Logger{
-			Filename:   config.Logger.Filename,
-			MaxSize:    config.Logger.MaxSize,
-			MaxAge:     config.Logger.MaxAge,
-			MaxBackups: config.Logger.MaxBackups,
-			LocalTime:  config.Logger.LocalTime,
-			Compress:   config.Logger.Compress,
-		}
-		fileLogger.NoColor = true
-		log.Logger = log.Output(zerolog.MultiLevelWriter(consoleLogger, fileLogger))
-	} else {
-		log.Logger = log.Output(consoleLogger)
-	}
-}
-
 func setupConfig() internal.Config {
 	viper.AddConfigPath(".")
 	viper.SetConfigName("config")
@@ -127,21 +105,52 @@ func setupConfig() internal.Config {
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			if err := viper.SafeWriteConfig(); err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
+				_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 				os.Exit(1)
 			}
 		} else {
-			_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
+			_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
 	}
 
 	var config internal.Config
 	if err := viper.Unmarshal(&config); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 	return config
+}
+
+func setupLogger(config internal.Config) {
+	var zapConfig zap.Config
+	if config.Debug {
+		zapConfig = zap.NewDevelopmentConfig()
+	} else {
+		zapConfig = zap.NewProductionConfig()
+	}
+
+	zapConfig.DisableCaller = true
+	zapConfig.Encoding = "console"
+	zapConfig.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("02 Jan 15:04")
+	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapConfig.EncoderConfig.ConsoleSeparator = " "
+
+	zapLog, err := zapConfig.Build()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+	log.SetLogger(zapr.NewLogger(zap.New(zapcore.NewTee(zapLog.Core()))))
+
+	/*&lumberjack.Logger{
+		Filename:   config.Logger.Filename,
+		MaxSize:    config.Logger.MaxSize,
+		MaxAge:     config.Logger.MaxAge,
+		MaxBackups: config.Logger.MaxBackups,
+		LocalTime:  config.Logger.LocalTime,
+		Compress:   config.Logger.Compress,
+	}*/
 }
 
 func Execute() {
