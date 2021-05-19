@@ -9,7 +9,6 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util"
-	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/nbt"
 	"github.com/r4g3baby/mcserver/pkg/util/pools"
@@ -175,7 +174,9 @@ func (conn *connection) ReadPacket() error {
 		return err
 	}
 
-	packetData := bytes.NewBuffer(payload)
+	packetData := pools.Buffer.Get(payload)
+	defer pools.Buffer.Put(packetData)
+
 	if conn.UseCompression() {
 		dataLength, err := packetData.ReadVarInt()
 		if err != nil {
@@ -199,7 +200,8 @@ func (conn *connection) ReadPacket() error {
 				return err
 			}
 
-			packetData = bytes.NewBuffer(uncompressedData)
+			packetData.Reset()
+			_, _ = packetData.Write(uncompressedData)
 		}
 	}
 
@@ -402,7 +404,8 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 		return nil
 	}
 
-	packetData := bytes.NewBuffer(nil)
+	packetData := pools.Buffer.Get(nil)
+	defer pools.Buffer.Put(packetData)
 
 	packetID, err := packets.GetID(conn.GetProtocol(), conn.GetState(), protocol.ClientBound, packet)
 	if err != nil {
@@ -419,9 +422,13 @@ func (conn *connection) WritePacket(packet protocol.Packet) error {
 
 	dataLength := packetData.Len()
 
-	buffer := bytes.NewBuffer(nil)
+	buffer := pools.Buffer.Get(nil)
+	defer pools.Buffer.Put(buffer)
+
 	if conn.UseCompression() {
-		data := bytes.NewBuffer(nil)
+		data := pools.Buffer.Get(nil)
+		defer pools.Buffer.Put(data)
+
 		if dataLength >= conn.GetCompressionThreshold() {
 			if err := data.WriteVarInt(int32(dataLength)); err != nil {
 				return err
