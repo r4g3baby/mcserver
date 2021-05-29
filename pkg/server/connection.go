@@ -10,7 +10,6 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
-	"github.com/r4g3baby/mcserver/pkg/util/nbt"
 	"github.com/r4g3baby/mcserver/pkg/util/pools"
 	"io"
 	"net"
@@ -336,7 +335,7 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 			if err := conn.WritePacket(&packets.PacketPlayOutJoinGame{
 				EntityID:         1,
 				Hardcore:         false,
-				Gamemode:         0,
+				Gamemode:         1,
 				PreviousGamemode: -1,
 				WorldNames:       []string{"minecraft:overworld"},
 				DimensionCodec:   protocol.DefaultDimensionCodec,
@@ -362,25 +361,34 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 				return err
 			}
 
-			if err := conn.WritePacket(&packets.PacketPlayOutPositionAndLook{}); err != nil {
+			if err := conn.WritePacket(&packets.PacketPlayOutPositionAndLook{
+				X: 0.5,
+				Y: 65,
+				Z: 0.5,
+			}); err != nil {
 				return err
 			}
 
-			var biomes []int32
-			for i := 0; i < 1024; i++ {
-				biomes = append(biomes, 1)
+			world := NewWorld("overworld")
+			renderDistance := 10 // load all chunks in render distance
+			for x := -renderDistance; x <= renderDistance; x++ {
+				for z := -renderDistance; z <= renderDistance; z++ {
+					world.GetChunk(x, z)
+				}
 			}
 
-			return conn.WritePacket(&packets.PacketPlayOutChunkData{
-				ChunkX:        0,
-				ChunkZ:        0,
-				FullChunk:     true,
-				PrimaryBit:    0,
-				Heightmaps:    nbt.CompoundTag{},
-				Biomes:        biomes,
-				Data:          []byte{},
-				BlockEntities: []nbt.Tag{},
-			})
+			world.SetBlock(0, 65, 0, "minecraft:torch")
+			world.SetBlock(0, 64, 0, "minecraft:dirt")
+			world.SetBlock(1, 64, 0, "minecraft:stone")
+			world.SetBlock(1, 64, 1, "minecraft:stone")
+			world.SetBlock(0, 64, 1, "minecraft:stone")
+			world.SetBlock(-1, 64, 1, "minecraft:stone")
+			world.SetBlock(-1, 64, 0, "minecraft:stone")
+			world.SetBlock(-1, 64, -1, "minecraft:stone")
+			world.SetBlock(0, 64, -1, "minecraft:stone")
+			world.SetBlock(1, 64, -1, "minecraft:stone")
+
+			return world.SendChunks(player)
 		}
 	case protocol.Play:
 		switch p := packet.(type) {
