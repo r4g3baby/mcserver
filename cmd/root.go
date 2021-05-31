@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/go-logr/zapr"
-	"github.com/r4g3baby/mcserver/internal"
+	"github.com/r4g3baby/mcserver/internal/config"
 	"github.com/r4g3baby/mcserver/pkg/log"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/server"
@@ -97,32 +97,29 @@ func init() {
 	_ = viper.BindPFlag("server.port", rootCmd.Flags().Lookup("port"))
 }
 
-func setupConfig() internal.Config {
-	viper.AddConfigPath(".")
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-
+func setupConfig() config.Config {
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			if err := viper.SafeWriteConfig(); err != nil {
+			if err := config.WriteDefaultConfig(); err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 				os.Exit(1)
 			}
+			return setupConfig()
 		} else {
 			_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 			os.Exit(1)
 		}
 	}
 
-	var config internal.Config
-	if err := viper.Unmarshal(&config); err != nil {
+	var conf config.Config
+	if err := viper.Unmarshal(&conf); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
-	return config
+	return conf
 }
 
-func setupLogger(config internal.Config) {
+func setupLogger(config config.Config) {
 	var zapConfig zap.Config
 	if config.Debug {
 		zapConfig = zap.NewDevelopmentConfig()

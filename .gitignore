@@ -24,4 +24,4 @@ modules.xml
 ### Project ###
 build/
 logs/
-config.toml
+config.yaml
