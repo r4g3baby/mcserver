@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 	"os/signal"
 	"syscall"
@@ -120,34 +121,39 @@ func setupConfig() config.Config {
 }
 
 func setupLogger(config config.Config) {
-	var zapConfig zap.Config
+	var zapConfig = zap.NewProductionEncoderConfig()
+	var level = zap.InfoLevel
 	if config.Debug {
-		zapConfig = zap.NewDevelopmentConfig()
+		level = zap.DebugLevel
+	}
+
+	zapConfig.ConsoleSeparator = "\u0020"
+	zapConfig.EncodeTime = zapcore.TimeEncoderOfLayout("02 Jan 15:04")
+	zapConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	consoleEncoder := zapcore.NewConsoleEncoder(zapConfig)
+
+	var core zapcore.Core
+	if config.Logger.Enabled {
+		zapConfig.EncodeTime = zapcore.EpochNanosTimeEncoder
+		zapConfig.EncodeLevel = zapcore.LowercaseLevelEncoder
+		fileEncoder := zapcore.NewJSONEncoder(zapConfig)
+
+		core = zapcore.NewTee(
+			zapcore.NewCore(fileEncoder, zapcore.AddSync(&lumberjack.Logger{
+				Filename:   config.Logger.Filename,
+				MaxSize:    config.Logger.MaxSize,
+				MaxAge:     config.Logger.MaxAge,
+				MaxBackups: config.Logger.MaxBackups,
+				LocalTime:  config.Logger.LocalTime,
+				Compress:   config.Logger.Compress,
+			}), level),
+			zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stderr), level),
+		)
 	} else {
-		zapConfig = zap.NewProductionConfig()
+		core = zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stderr), level)
 	}
 
-	zapConfig.DisableCaller = true
-	zapConfig.Encoding = "console"
-	zapConfig.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("02 Jan 15:04")
-	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	zapConfig.EncoderConfig.ConsoleSeparator = " "
-
-	zapLog, err := zapConfig.Build()
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
-	}
-	log.SetLogger(zapr.NewLogger(zap.New(zapcore.NewTee(zapLog.Core()))))
-
-	/*&lumberjack.Logger{
-		Filename:   config.Logger.Filename,
-		MaxSize:    config.Logger.MaxSize,
-		MaxAge:     config.Logger.MaxAge,
-		MaxBackups: config.Logger.MaxBackups,
-		LocalTime:  config.Logger.LocalTime,
-		Compress:   config.Logger.Compress,
-	}*/
+	log.SetLogger(zapr.NewLogger(zap.New(core, zap.WithCaller(false))))
 }
 
 func Execute() {
