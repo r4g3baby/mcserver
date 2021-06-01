@@ -8,7 +8,7 @@ server:
     threshold: 256
     level: -1
 
-logging:
+logger:
   enabled: false
   fileName: logs/latest.log
   maxSize: 2
