@@ -369,7 +369,7 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 				return err
 			}
 
-			world := NewWorld("overworld")
+			world := NewWorld("overworld", protocol.Overworld)
 			renderDistance := 10 // load all chunks in render distance
 			for x := -renderDistance; x <= renderDistance; x++ {
 				for z := -renderDistance; z <= renderDistance; z++ {

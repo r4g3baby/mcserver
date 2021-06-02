@@ -314,10 +314,10 @@ func (sPalette *sectionPalette) GetBitsPerBlock() int {
 	return bitsPerBlock
 }
 
-func NewWorld(name string) World {
+func NewWorld(name string, dimension protocol.Dimension) World {
 	return &world{
 		name:      name,
-		dimension: protocol.Overworld,
+		dimension: dimension,
 	}
 }
 
