@@ -369,26 +369,7 @@ func (conn *connection) handlePacketRead(packet protocol.Packet) error {
 				return err
 			}
 
-			world := NewWorld("overworld", protocol.Overworld)
-			renderDistance := 10 // load all chunks in render distance
-			for x := -renderDistance; x <= renderDistance; x++ {
-				for z := -renderDistance; z <= renderDistance; z++ {
-					world.GetChunk(x, z)
-				}
-			}
-
-			world.SetBlock(0, 65, 0, "minecraft:torch")
-			world.SetBlock(0, 64, 0, "minecraft:dirt")
-			world.SetBlock(1, 64, 0, "minecraft:stone")
-			world.SetBlock(1, 64, 1, "minecraft:stone")
-			world.SetBlock(0, 64, 1, "minecraft:stone")
-			world.SetBlock(-1, 64, 1, "minecraft:stone")
-			world.SetBlock(-1, 64, 0, "minecraft:stone")
-			world.SetBlock(-1, 64, -1, "minecraft:stone")
-			world.SetBlock(0, 64, -1, "minecraft:stone")
-			world.SetBlock(1, 64, -1, "minecraft:stone")
-
-			return world.SendChunks(player)
+			return conn.server.GetWorld().SendChunks(player)
 		}
 	case protocol.Play:
 		switch p := packet.(type) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/r4g3baby/mcserver/pkg/log"
+	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/eventbus"
@@ -27,6 +28,7 @@ type (
 		Stop() error
 
 		GetConfig() Config
+		GetWorld() World
 
 		GetPlayerCount() int
 		GetPlayers() []Player
@@ -43,6 +45,7 @@ type (
 
 	server struct {
 		config Config
+		world  World
 
 		players  sync.Map
 		eventbus eventbus.EventBus
@@ -147,6 +150,10 @@ func (server *server) Stop() error {
 
 func (server *server) GetConfig() Config {
 	return server.config
+}
+
+func (server *server) GetWorld() World {
+	return server.world
 }
 
 func (server *server) GetPlayerCount() int {
@@ -280,8 +287,17 @@ func (server *server) sendKeepAlive() {
 }
 
 func NewServer(config Config) Server {
+	var world = NewWorld("overworld", protocol.Overworld)
+	renderDistance := 10 // init all chunks in render distance
+	for x := -renderDistance; x <= renderDistance; x++ {
+		for z := -renderDistance; z <= renderDistance; z++ {
+			world.GetChunk(x, z)
+		}
+	}
+
 	return &server{
 		config:   config,
+		world:    world,
 		players:  sync.Map{},
 		eventbus: eventbus.New(),
 	}

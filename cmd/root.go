@@ -37,6 +37,18 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		world := serv.GetWorld()
+		world.SetBlock(0, 65, 0, "minecraft:torch")
+		world.SetBlock(0, 64, 0, "minecraft:dirt")
+		world.SetBlock(1, 64, 0, "minecraft:stone")
+		world.SetBlock(1, 64, 1, "minecraft:stone")
+		world.SetBlock(0, 64, 1, "minecraft:stone")
+		world.SetBlock(-1, 64, 1, "minecraft:stone")
+		world.SetBlock(-1, 64, 0, "minecraft:stone")
+		world.SetBlock(-1, 64, -1, "minecraft:stone")
+		world.SetBlock(0, 64, -1, "minecraft:stone")
+		world.SetBlock(1, 64, -1, "minecraft:stone")
+
 		_ = serv.OnAsync(server.OnPacketReadEvent, func(e server.PacketEvent) {
 			if chatPacket, ok := e.GetPacket().(*packets.PacketPlayInChatMessage); ok {
 				serv.ForEachPlayer(func(player server.Player) bool {
