@@ -38,31 +38,15 @@ func (array *packedArray) GetValueMask() uint64 {
 }
 
 func (array *packedArray) Set(index, value int) {
-	startLong := (index * array.bitsPerValue) / 64
-	startOffset := (index * array.bitsPerValue) % 64
-	endLong := ((index+1)*array.bitsPerValue - 1) / 64
-
-	uValue := uint64(value) & array.valueMask
-
-	array.data[startLong] |= uValue << startOffset
-	if startLong != endLong {
-		array.data[endLong] = uValue >> (64 - startOffset)
-	}
+	long := index / (64 / array.bitsPerValue)
+	offset := (index - long*(64/array.bitsPerValue)) * array.bitsPerValue
+	array.data[long] = array.data[long]&(array.valueMask<<offset^math.MaxUint64) | (uint64(value)&array.valueMask)<<offset
 }
 
 func (array *packedArray) Get(index int) int {
-	startLong := (index * array.bitsPerValue) / 64
-	startOffset := (index * array.bitsPerValue) % 64
-	endLong := ((index+1)*array.bitsPerValue - 1) / 64
-
-	var value uint64
-	if startLong == endLong {
-		value = array.data[startLong] >> startOffset
-	} else {
-		endOffset := 64 - startOffset
-		value = array.data[startLong]>>startOffset | array.data[endLong]<<endOffset
-	}
-	return int(value & array.valueMask)
+	long := index / (64 / array.bitsPerValue)
+	offset := (index - long*(64/array.bitsPerValue)) * array.bitsPerValue
+	return int(array.data[long] >> offset & array.valueMask)
 }
 
 func (array *packedArray) Resized(bitsPerValue int) PackedArray {
@@ -75,7 +59,7 @@ func (array *packedArray) Resized(bitsPerValue int) PackedArray {
 
 func NewPackedArray(bitsPerValue, capacity int) PackedArray {
 	return &packedArray{
-		data:         make([]uint64, int(math.Ceil(float64((capacity*bitsPerValue)/64)))),
+		data:         make([]uint64, (capacity+(64/bitsPerValue)-1)/(64/bitsPerValue)),
 		capacity:     capacity,
 		bitsPerValue: bitsPerValue,
 		valueMask:    uint64((1 << bitsPerValue) - 1),
