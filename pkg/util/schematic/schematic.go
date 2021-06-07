@@ -8,6 +8,8 @@ type (
 		GetWidth() int
 		GetHeight() int
 		GetLength() int
+		GetOffset() [3]int
+		GetBlocks() [][][]string
 	}
 
 	Metadata interface {
@@ -56,6 +58,13 @@ func (schem *schematic) GetHeight() int {
 
 func (schem *schematic) GetLength() int {
 	return schem.length
+}
+
+func (schem *schematic) GetOffset() [3]int {
+	return schem.offset
+}
+func (schem *schematic) GetBlocks() [][][]string {
+	return schem.blocks
 }
 
 func (meta *metadata) GetName() string {
