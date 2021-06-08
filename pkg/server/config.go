@@ -4,10 +4,16 @@ type (
 	Config struct {
 		Host        string
 		Port        int
-		Compression Compression
+		World       WorldConf
+		Compression CompressionConf
 	}
 
-	Compression struct {
+	WorldConf struct {
+		Schematic      string
+		RenderDistance int
+	}
+
+	CompressionConf struct {
 		Threshold int
 		Level     int
 	}

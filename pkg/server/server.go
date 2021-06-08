@@ -7,11 +7,15 @@ import (
 	"github.com/r4g3baby/mcserver/pkg/log"
 	"github.com/r4g3baby/mcserver/pkg/protocol"
 	"github.com/r4g3baby/mcserver/pkg/protocol/packets"
+	"github.com/r4g3baby/mcserver/pkg/util/bytes"
 	"github.com/r4g3baby/mcserver/pkg/util/chat"
 	"github.com/r4g3baby/mcserver/pkg/util/eventbus"
+	"github.com/r4g3baby/mcserver/pkg/util/schematic"
+	"io"
 	"math"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -229,7 +233,7 @@ func (server *server) handleClient(conn net.Conn) {
 	connection := newConnection(conn, server)
 	for {
 		if err := connection.ReadPacket(); err != nil {
-			if !errors.Is(err, net.ErrClosed) {
+			if !errors.Is(err, net.ErrClosed) && !errors.Is(err, io.EOF) {
 				log.Log.WithValues(
 					"connection", conn.RemoteAddr(),
 				).Error(err, "got error during packet read")
@@ -288,10 +292,35 @@ func (server *server) sendKeepAlive() {
 
 func NewServer(config Config) Server {
 	var world = NewWorld("overworld", protocol.Overworld)
-	renderDistance := 10 // init all chunks in render distance
+	renderDistance := config.World.RenderDistance + 1
 	for x := -renderDistance; x <= renderDistance; x++ {
 		for z := -renderDistance; z <= renderDistance; z++ {
 			world.GetChunk(x, z)
+		}
+	}
+
+	if schemFileName := config.World.Schematic; schemFileName != "" {
+		if fileBytes, err := os.ReadFile(schemFileName); err == nil {
+			if schem, err := schematic.Read(bytes.NewBuffer(fileBytes)); err == nil {
+				log.Log.WithValues(
+					"width", schem.GetWidth(),
+					"height", schem.GetHeight(),
+					"length", schem.GetLength(),
+					"size", schem.GetWidth()*schem.GetHeight()*schem.GetLength(),
+				).Info("loading schematic")
+				for x := 0; x < schem.GetWidth(); x++ {
+					for y := 0; y < schem.GetHeight(); y++ {
+						for z := 0; z < schem.GetLength(); z++ {
+							world.SetBlock(x, y, z, schem.GetBlocks()[x][y][z])
+						}
+					}
+				}
+				log.Log.Info("done loading schematic")
+			} else {
+				log.Log.Error(err, "failed to read schematic file")
+			}
+		} else {
+			log.Log.Error(err, "failed to read schematic file")
 		}
 	}
 
